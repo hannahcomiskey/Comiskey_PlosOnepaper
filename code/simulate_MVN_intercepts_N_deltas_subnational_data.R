@@ -13,48 +13,29 @@ alpha_sim <- matrix(NA, nrow = M, ncol = P)
 beta_c_sim <- matrix(NA, nrow = M, ncol = C)
 delta_sim <- array(NA, dim=c(M, P, H))
 
-# Simulate intercepts
-sigma_beta_sd_sim <- c(3, 1.5, 3, 2.5, 2) 
-V_beta <- diag(x=sigma_beta_sd_sim)  
+# Var-cov of Betas 
+Sigma_beta_sim <- matrix(NA, 5,5)
+od = 0
+rho_m <- runif(10, -0.5, 0.5)
+sd_beta <- c(1, 0.5, 0.3 , 1.5, 1.1)
 
-# Correlation matrix 
-sim_data <- list(x = rpois(1000, 5), N = 1000, R = 5)
-
-sim_stan <- "
-data {
-  int<lower=0> N; // number of observations
-  int<lower=0> x[N]; // outcome variable
-  int R;
-  }
-parameters {
-  real lambda;
+for (j in 1:M) {
+  for (i in (j+1):M) {
+    if(i<=M) {
+      od = 1 + od
+      Sigma_beta_sim[i,j] = sd_beta[j]*sd_beta[i]*rho_m[od]
+      Sigma_beta_sim[j,i] = sd_beta[j]*sd_beta[i]*rho_m[od]
+    } else{
+      next
+    }
+    Sigma_beta_sim[j,j] = (sd_beta[j])^2
+  } 
 }
-model {
-  x ~ poisson_log(lambda);  
-}
-generated quantities {
-  corr_matrix[R] Omega;
-  Omega <- lkj_corr_rng(R,1);
 
-}
-"
-
-sim_parms <- c('Omega')
-fit_sim <- stan(model_code = sim_stan, pars = sim_parms,
-                data = sim_data, chains = 1, iter = 10000)
-
-res_sim <- as.data.frame(fit_sim)
-names(res_sim) <- sub("\\[", "_", names(res_sim))
-names(res_sim) <- sub("\\,", "_", names(res_sim))
-names(res_sim) <- sub("\\]", "", names(res_sim))
-
-Omega_beta <- matrix(as.vector(apply(res_sim,2,mean))[1:25], nrow=5, ncol=5)
-
-Sigma_beta_sim <- V_beta %*% Omega_beta %*% V_beta
 
 # Simulate the country-level parameters 
 for(c in 1:ncol(beta_c_sim)) {
-  beta_c_sim[,c] <- c(2, 3, 1, 0.8, 1) #runif(5, min=0, max=3) # mvtnorm::rmvnorm(1, mean = rep(0,5), sigma=Sigma_beta_sim)
+  beta_c_sim[,c] <-  mvtnorm::rmvnorm(1, mean = rep(0,5), sigma=Sigma_beta_sim)
 }
 
 # simulate the province-level parameters 
@@ -69,29 +50,16 @@ for(m in 1:M) {
 
 
 # Simulate FOD spline coefficients 
-D=2
-L <- matrix(nrow=5, ncol=2)
-psi <- rep(1, 5)
-L_t <- c(-0.5, 0.8, -1, 2, 0.5, 0.3, 0.05) #rcauchy(7, 0, 1)
-od = 0
-L[1,2] = 0 
+sd_delta <- c(1, 0.8, 0.5, 0.3, 0.75)
 
-for (j in 1:D) {
-  L[j,j] = 1
-  for (i in (j+1):M) {
-    od = 1 + od
-    L[i,j] = L_t[od]
-  } 
-}
-
-Q = L %*% t(L) + diag(psi) 
-
-for(p in 1:P) {
-  for(h in 1:(H-1)) {
-    delta_sim[1:M,p,h] <- mvtnorm::rmvnorm(1, mean=rep(0, M), sigma=Q)
-  }
-  for(m in 1:M) {
-    delta_sim[m,p,H] <- -sum(delta_sim[m,p,c(1:(H-1))])
+for(m in 1:M){
+  for(p in 1:P) {
+    for(h in 1:(H-1)) {
+      delta_sim[m,p,h] <-rnorm(1, mean=0, sd=sd_delta[m])
+    }
+    for(m in 1:M) {
+      delta_sim[m,p,H] <- -sum(delta_sim[m,p,c(1:(H-1))])
+    }
   }
 }
 
@@ -163,7 +131,7 @@ ggplot() +
   geom_line(data = P_df, aes(x=index_year, y=Observed, colour=Method, lty=Sector)) +
   facet_wrap(~ interaction(Method, index_subnat))
 
-indexid=1
+indexid=5
 alpha_temp <- tibble(alpha = alpha_sim[,indexid], index_method = 1:5, Method = n_method) %>%
   mutate(invlogit.alpha = exp(alpha)/(1+exp(alpha)))
 

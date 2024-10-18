@@ -1,4 +1,5 @@
 library(rstan)
+library(shinystan)
 library(tidyverse)
 library(tidybayes)
 library(bayesplot)
@@ -43,7 +44,9 @@ OD_count  = D*(M_count-D)+ D*(D-1)/2
 
 
 # Fit model -----------------------------------------
-fit <- readRDS('results/STAN_model_test_zih_simdata_allMVN_sigmay.RDS')
+fit <- readRDS('results/STAN_model_test_zih_simdata_sigmay.RDS')
+
+# shiny::launch_shinystan(fit)
 
 traceplot(fit, pars = c("alpha_pms[3,1]", "alpha_pms[3,2]", "alpha_pms[3,3]", "alpha_pms[3,4]", "alpha_pms[3,5]", "alpha_pms[3,6]"), inc_warmup = FALSE, nrow = 6)
 # traceplot(fit, pars = c("sigmabeta_Omega[1,1]",
@@ -54,8 +57,10 @@ traceplot(fit, pars = c("alpha_pms[3,1]", "alpha_pms[3,2]", "alpha_pms[3,3]", "a
 traceplot(fit, pars = c("delta_k[1,1,1]",  "delta_k[2,3,5]",  "delta_k[3,2,2]", "delta_k[4,5,7]", "delta_k[5,4,6]"), inc_warmup = FALSE, nrow = 6)
 traceplot(fit, pars = c("L_Sigma_beta"), inc_warmup = FALSE, nrow = 6)
 traceplot(fit, pars = c("L_Sigma_delta"), inc_warmup = FALSE, nrow = 6)
-traceplot(fit, pars = c("sigma_y"), inc_warmup = FALSE, nrow = 5)
+traceplot(fit, pars = c("sigma_alpha"), inc_warmup = FALSE, nrow = 5)
+traceplot(fit, pars = c("beta_c"), inc_warmup = FALSE, ncol = 5)
 
+pairs(fit, pars = "L_Sigma_beta")
 
 code <- get_stancode(fit)
 cat(code)
@@ -122,6 +127,68 @@ axis(1, at = min(all_years):max(all_years))
 abline(v=knots.k, col = seq(1, H), lwd = 1)
 lines(all_years, random_spline_comp, type= "l", col = k, lwd = 1)
 
+# Check out variance-covariance matrices 
+View(get_posterior_mean(fit))
+
+# Compare posterior to inputs 
+
+get_variables(fit)
+
+fit %>%
+  spread_draws(`sigma_y[1]`, `sigma_y[2]`, `sigma_y[3]`, `sigma_y[4]`, `sigma_y[5]`) %>%
+  pivot_longer(cols = c(`sigma_y[1]`, `sigma_y[2]`, `sigma_y[3]`, `sigma_y[4]`, `sigma_y[5]`), names_to='Parameter', values_to = 'sample') %>%
+  ggplot() +
+  stat_halfeye(aes(y = Parameter, x = sample)) 
+ggsave(filename = 'visualisations/simulated_data/independent_deltas/sigma_y_density.pdf')
+
+beta_c_sim <- t(beta_c_sim)
+colnames(beta_c_sim) <- 1:5
+beta_c_df <- as_tibble(beta_c_sim) %>%
+  pivot_longer(cols=c(`1`:`5`), names_to = 'index_method', values_to ='value') %>%
+  mutate(index_country = rep(1:4, each=5),
+         Parameter = paste0("beta_c[",rep(1:4, each=5),",",rep(1:5, 4),"]"))
+
+fit %>%
+  spread_draws(`beta_c[1,1]`, `beta_c[1,2]`, `beta_c[1,3]`, `beta_c[1,4]`, `beta_c[1,5]`,
+               `beta_c[2,1]`, `beta_c[2,2]`, `beta_c[2,3]`, `beta_c[2,4]`, `beta_c[2,5]`,
+               `beta_c[3,1]`, `beta_c[3,2]`, `beta_c[3,3]`, `beta_c[3,4]`, `beta_c[3,5]`,
+               `beta_c[4,1]`, `beta_c[4,2]`, `beta_c[4,3]`, `beta_c[4,4]`, `beta_c[4,5]`) %>%
+  pivot_longer(cols = c(`beta_c[1,1]`, `beta_c[1,2]`, `beta_c[1,3]`, `beta_c[1,4]`, `beta_c[1,5]`,
+                        `beta_c[2,1]`, `beta_c[2,2]`, `beta_c[2,3]`, `beta_c[2,4]`, `beta_c[2,5]`,
+                        `beta_c[3,1]`, `beta_c[3,2]`, `beta_c[3,3]`, `beta_c[3,4]`, `beta_c[3,5]`,
+                        `beta_c[4,1]`, `beta_c[4,2]`, `beta_c[4,3]`, `beta_c[4,4]`, `beta_c[4,5]`), names_to='Parameter', values_to = 'sample') %>%
+  ggplot() +
+  #stat_halfeye(aes(y = Parameter, x = sample)) +
+  geom_density(aes(x = sample), fill='grey', alpha=0.8) +
+  geom_vline(data=beta_c_df, aes(colour = Parameter, xintercept = value), show.legend = FALSE) +
+  facet_wrap(~Parameter)
+ggsave(filename = 'visualisations/simulated_data/independent_deltas/beta_c_density_fixedQ.pdf')
+
+#HERE
+alpha_sim <- t(alpha_sim)
+colnames(alpha_sim) <- 1:5
+alpha_df <- as_tibble(alpha_sim) %>%
+  pivot_longer(cols=c(`1`:`5`), names_to = 'index_method', values_to ='value') %>%
+  mutate(index_subnat = rep(1:P, each=5),
+         Parameter = paste0("alpha_pms[",rep(1:P, each=5),",",rep(1:5, 5),"]"))
+
+fit %>%
+  spread_draws(`alpha_pms[1,1]`, `alpha_pms[1,2]`, `alpha_pms[1,3]`, `alpha_pms[1,4]`, `alpha_pms[1,5]`,
+               `alpha_pms[2,1]`, `alpha_pms[2,2]`, `alpha_pms[2,3]`, `alpha_pms[2,4]`, `alpha_pms[2,5]`,
+               `alpha_pms[3,1]`, `alpha_pms[3,2]`, `alpha_pms[3,3]`, `alpha_pms[3,4]`, `alpha_pms[3,5]`,
+               `alpha_pms[4,1]`, `alpha_pms[4,2]`, `alpha_pms[4,3]`, `alpha_pms[4,4]`, `alpha_pms[4,5]`,
+               `alpha_pms[5,1]`, `alpha_pms[5,2]`, `alpha_pms[5,3]`, `alpha_pms[5,4]`, `alpha_pms[5,5]`) %>%
+  pivot_longer(cols = c(`alpha_pms[1,1]`, `alpha_pms[1,2]`, `alpha_pms[1,3]`, `alpha_pms[1,4]`, `alpha_pms[1,5]`,
+                        `alpha_pms[2,1]`, `alpha_pms[2,2]`, `alpha_pms[2,3]`, `alpha_pms[2,4]`, `alpha_pms[2,5]`,
+                        `alpha_pms[3,1]`, `alpha_pms[3,2]`, `alpha_pms[3,3]`, `alpha_pms[3,4]`, `alpha_pms[3,5]`,
+                        `alpha_pms[4,1]`, `alpha_pms[4,2]`, `alpha_pms[4,3]`, `alpha_pms[4,4]`, `alpha_pms[4,5]`,
+                        `alpha_pms[5,1]`, `alpha_pms[5,2]`, `alpha_pms[5,3]`, `alpha_pms[5,4]`, `alpha_pms[5,5]`), names_to='Parameter', values_to = 'sample') %>%
+  ggplot() +
+  geom_density(aes(x = sample), fill='grey', alpha=0.8) +
+  geom_vline(data=alpha_df, aes(colour = Parameter, xintercept = value), show.legend = FALSE) +
+  facet_wrap(~Parameter)
+ggsave(filename = 'visualisations/simulated_data/independent_deltas/alpha_pm_density_fixedQ.pdf')
+
 
 # Get P estimates 
 P_samps <- model_samps$P
@@ -169,7 +236,7 @@ P_df<- P_sim_df_sample %>%
   left_join(method_index_table) %>%
   pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Observed')
 
-subnatid = 1
+subnatid = 5
 # Plot means vs observed values
 ggplot() +
   geom_point(data = P_df %>% filter(index_subnat==subnatid), aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +

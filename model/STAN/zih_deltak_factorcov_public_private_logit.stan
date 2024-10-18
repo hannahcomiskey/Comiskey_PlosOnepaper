@@ -19,8 +19,6 @@ data {
   int matchsubnat[n_obs]; // subnat indexing 
   vector[n_obs] y; // proportions
   // vector<lower=0>[n_obs] se_prop; // standard errors
-  int matchmethod_d[OD_count];
-
 }
 
 parameters {   // The parameters accepted by the model. 

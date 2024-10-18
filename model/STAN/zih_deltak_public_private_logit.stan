@@ -10,7 +10,6 @@ data {
   matrix[n_years, H] Zih; // Basis functions
   vector[n_years] intercept; // vector 1s
   vector[M_count] beta_mu; // vector 0s
-  vector[M_count] delta_mu; // vector 0s
   int matchcountry[P_count]; // country indexing
   int matchmethod[n_obs] ; // method indexing
   int matchyears[n_obs]; // year indexing
@@ -40,8 +39,8 @@ transformed parameters {
   matrix[S_count, n_years] P[M_count, P_count]; // logit observation
   for(m in 1:M_count){ 
     for(p in 1:P_count){
-      for(h in 1:(H-1)) {
-        delta_k[m,p,h] = delta_k_raw[p,h,m]; // append_row(delta_k_raw[m,p], -sum(delta_k_raw[m,p])); // sum 0 constraint
+      for(h in 1:(H-1)){
+        delta_k[m,p,h] = delta_k_raw[m,p,h]; // append_row(delta_k_raw[m,p], -sum(delta_k_raw[m,p])); // sum 0 constraint
       }
       delta_k[m,p,H] = -sum(delta_k[m,p,1:(H-1)]);
       z[m,p] = to_vector(alpha_pms[m,p]*intercept) + to_vector(Zih*delta_k[m,p]); // Public sector proprtion on logit scale

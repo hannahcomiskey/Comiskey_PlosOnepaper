@@ -17,18 +17,44 @@ Zih <- B.ik%*%Q.kh
 H <- dim(Zih)[2]
 
 # Fit model -----------------------------------------
-fit <- readRDS(file='results/global_subnat/STAN_model_test_zih_cholesky.RDS')
+fit <- readRDS(file='results/global_subnat/STAN_model_zih_deltak_factorcov_obsdata.RDS')
 
 traceplot(fit, pars = c("alpha_pms[3,1]", "alpha_pms[3,2]", "alpha_pms[3,3]", "alpha_pms[3,4]", "alpha_pms[3,5]", "alpha_pms[3,6]"), inc_warmup = FALSE, nrow = 6)
 traceplot(fit, pars = c("L_Sigma[1,1]", "L_Sigma[2,2]", "L_Sigma[3,3]"), inc_warmup = FALSE, nrow = 3)
 traceplot(fit, pars = c("delta_k[1,1,1]",  "delta_k[2,3,5]",  "delta_k[3,2,2]", "delta_k[4,5,7]", "delta_k[5,4,6]"), inc_warmup = FALSE, nrow = 6)
+traceplot(fit, pars = c("Q"), inc_warmup = FALSE, nrow = 5)
+traceplot(fit, pars = c("sigma_alpha"), inc_warmup = FALSE, nrow = 5)
+
 
 code <- get_stancode(fit)
 cat(code)
 
 check_divergences(fit)
 
+# Rhats 
+rhats <-  bayesplot::rhat(fit)
+color_scheme_set("brightblue") # see help("color_scheme_set")
+mcmc_rhat(rhats) + yaxis_text(hjust = 1)
+
+
+# N-eff
+ratios <- bayesplot::neff_ratio(fit)
+print(ratios)
+mcmc_neff(ratios)
+
+plot(fit, pars=c('mu_lt'))
+
+mcmc_nuts_divergence(nuts_params(fit), log_posterior(fit))
+
+np_cp <- nuts_params(fit)
+mcmc_nuts_energy(np_cp)
+
+
 # Get parameter estimates ------------------
+method_index_table <- tibble(Method = n_method, index_method = 1:5)
+sector_index_table <- tibble(Sector = c('Public', 'Private'), index_sector = 1:2)
+year_index_table <- tibble(average_year = all_years, index_year = 1:length(all_years))
+
 # get alpha params
 alpha_samps <- rstan::extract(fit, pars = "alpha_pms")
 alpha_samps <- alpha_samps$alpha_pms
@@ -66,14 +92,18 @@ axis(1, at = min(all_years):max(all_years))
 abline(v=knots.k, col = seq(1, H), lwd = 1)
 lines(all_years, random_spline_comp, type= "l", col = k, lwd = 1)
 
+delta_df <- plyr::adply(delta_k.mean, c(1,2))
+colnames(delta_df) <- c('index_method', 'index_subnat', 1:9)
+
 # Check delta.k sums to 0 
 delta_df %>%
-  filter(index_method==1 & index_subnat==1) %>%
-  summarise(sum = sum(`1`:`9`))
+  filter(index_method==1 & index_subnat==1) %>% 
+  select(`1`:`9`) %>% 
+  unlist() %>% as.vector() %>% sum()
 
 # Assemble estimated proportions from parameters 
 M_count=5
-P_count = length(n_subnat)
+P_count = nrow(country_subnat_tbl)
 S_count=2
 z <- array(NA, dim=c(M_count, P_count, n_all_years))
 P <- array(NA, dim=c(M_count, P_count, S_count, n_all_years))
@@ -93,12 +123,29 @@ for(m in 1:M_count){
     P[, ,2,] =1 - P[, ,1,]
   } 
 } 
- 
+
+P_mean <- plyr::adply(P, c(1,2,3,4))
+colnames(P_mean) <- c('index_method', 'index_subnat', 'index_sector', 'index_year', 'Mean')
+P_mean <- P_mean %>% 
+  mutate(across(everything(), as.numeric)) %>%
+  left_join(index_country_subnat_tbl) %>% 
+  left_join(method_index_table) %>% 
+  left_join(sector_index_table) %>%
+  left_join(year_index_table)
+
+FP_long <- FP_source_data_wide %>%
+  rowwise() %>%
+  mutate(Private = Commercial_medical + Other) %>%
+  #select(!c(Public_n, Private_n, check_total)) %>%
+  select(!c(count_SE.NA, DEFT, Commercial_medical.SE, Other.SE, Public.SE, Commercial_medical, Other, n_Public, n_Commercial_medical, n_Other, check_total)) %>%
+  pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Observed')
+
+
 # # Plot means vs observed values
-# ggplot() +
-#   geom_point(data = P_df %>% filter(index_subnat==10), aes(x=index_year, y=Observed, colour=Method, pch=Sector)) +
-#   geom_line(data = P_samps.mean %>% filter(index_subnat==10), aes(x=index_year, y=Mean, colour=Method, lty=Sector)) +
-#   facet_wrap(~Method)
+ggplot() +
+  geom_point(data = FP_long %>% filter(index_subnat==200), aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +
+  geom_line(data = P_mean %>% filter(index_subnat==200), aes(x=index_year, y=Mean, colour=Sector, lty=Sector)) +
+  facet_wrap(~Method)
 
 
 

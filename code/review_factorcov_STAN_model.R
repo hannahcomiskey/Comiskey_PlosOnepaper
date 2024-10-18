@@ -1,15 +1,14 @@
 library(rstan)
 library(tidyverse)
 library(tidybayes)
-library(bayesplot)
 
-# Source simulated data --------------------------------------
+# Source simulated data --------------------------------------------------------
 options(mc.cores = parallel::detectCores())
-rstan_options(threads_per_chain = 1, auto_write = TRUE)
+rstan_options(auto_write = TRUE)
 
 load("data/simulated_data_factorcov_new.RData")
 
-# Get logit of parameters and variance --------------------
+# Get logit of parameters and variance -----------------------------------------
 mydata <- P_sim_df_sample[,c("Public")] %>%
   mutate(Public.SE = 0.1) %>%
   rowwise() %>%
@@ -21,7 +20,8 @@ logit.data <- mydata %>%
          logit.Public.Var = ((1/(Public*(1-Public)))^2)*Public.SE^2,
          logit.Public.SE = sqrt(logit.Public.Var))
 
-# # testing splines ---------------------------------
+# # testing splines ------------------------------------------------------------
+all_years <- -10:30
 B <- splines::bs(all_years, df=10, degree=3, intercept = FALSE)
 K <-dim(B)[2]
 B.ik <- B
@@ -29,21 +29,27 @@ D.hk <- diff(diag(K), diff = 1) # first order difference matrix (h = k-1)
 Q.kh <- t(D.hk)%*%solve(D.hk%*%t(D.hk))
 Zih <- B.ik%*%Q.kh 
 
-# Set up model inputs -----------------------------
+year_index_table <- tibble(Year = all_years, index_year = 1:length(all_years))
+
+P_sim_df_sample <- P_sim_df_sample %>% 
+  rename(Year = index_year) %>%
+  mutate_if(is.character, as.numeric) %>%
+  left_join(year_index_table)
+
+# Set up model inputs ----------------------------------------------------------
 simmatchsubnat <- as.vector(as.numeric(P_sim_df_sample$index_subnat))
 simmatchmethod <- as.vector(as.numeric(P_sim_df_sample$index_method))
 simmatchyears <- as.vector(as.numeric(P_sim_df_sample$index_year))
 simmatchcountry <- matchcountry
 n_all_years <- length(all_years)
 
-
-D=3
+D=2
 M_count = 5
 OD_count  = D*(M_count-D)+ D*(D-1)/2
 
 
 # Fit model -----------------------------------------
-fit <- readRDS('results/STAN_model_test_zih_deltak_factorcov_simdata_full_sigmay.RDS')
+fit <- readRDS('results/STAN_model_test_zih_deltak_factorcov_Q_2.RDS')
 
 # traceplot(fit, pars = c("delta_k[1,1,1]",
 #                         "delta_k[2,3,5]",
@@ -51,12 +57,13 @@ fit <- readRDS('results/STAN_model_test_zih_deltak_factorcov_simdata_full_sigmay
 #                         "delta_k[4,5,7]",
 #                         "delta_k[5,4,6]"), inc_warmup = FALSE, nrow=5)
 
-traceplot(fit, pars = c("L[1,1]",
-                        "L[2,2]"), inc_warmup = FALSE, nrow = 2)
+# traceplot(fit, pars = c("L_Sigma"), inc_warmup = FALSE, nrow = 5)
 
-traceplot(fit, pars = c("L[2,1]",
-                        "L[3,1]",
-                        "L[3,2]"), inc_warmup = FALSE, nrow = 3)
+traceplot(fit, pars = c("beta_c"), inc_warmup = FALSE, nrow = 5)
+
+# traceplot(fit, pars = c("L[2,1]",
+#                         "L[3,1]",
+#                         "L[3,2]"), inc_warmup = FALSE, nrow = 3)
 
 traceplot(fit, pars = c("psi"), inc_warmup = FALSE, nrow=3)
 
@@ -65,6 +72,8 @@ traceplot(fit, pars = c("L_d"), inc_warmup = FALSE, nrow=2)
 traceplot(fit, pars = c("L_t"), inc_warmup = FALSE, nrow=4)
 
 traceplot(fit, pars = c("sigma_y"), inc_warmup = FALSE, nrow=5)
+
+traceplot(fit, pars = c("delta_k[1,1,1]", "delta_k[2,3,7]", "delta_k[3,2,5]", "delta_k[4,4,8]", "delta_k[5,5,3]"), inc_warmup = FALSE, nrow=5)
 
 
 code <- get_stancode(fit)
@@ -83,8 +92,6 @@ ratios <- bayesplot::neff_ratio(fit)
 print(ratios)
 mcmc_neff(ratios)
 
-plot(fit, pars=c('mu_lt'))
-
 mcmc_nuts_divergence(nuts_params(fit), log_posterior(fit))
 
 np_cp <- nuts_params(fit)
@@ -101,7 +108,7 @@ fit %>%
   pivot_longer(cols = c(`sigma_y[1]`, `sigma_y[2]`, `sigma_y[3]`, `sigma_y[4]`, `sigma_y[5]`), names_to='Parameter', values_to = 'sample') %>%
   ggplot() +
   stat_halfeye(aes(y = Parameter, x = sample)) 
-ggsave(filename = 'visualisations/simulated_data/factor_cov/sigma_y_density.pdf')
+ggsave(filename = 'visualisations/simulated_data/factor_cov/onlyQ/sigma_y_density.pdf')
 
 L
 fit %>%
@@ -119,7 +126,7 @@ fit %>%
   geom_density(aes(x = sample), fill='grey', alpha=0.8) +
   geom_vline(data=L_df, aes(colour = Parameter, xintercept = value), show.legend = FALSE) +
   facet_wrap(~Parameter)
-ggsave(filename = 'visualisations/simulated_data/factor_cov/L_cov_density.pdf')
+ggsave(filename = 'visualisations/simulated_data/factor_cov/onlyQ/L_cov_density.pdf')
 
 
 psi
@@ -133,7 +140,7 @@ fit %>%
   ggplot(aes(y = Parameter, x = sample)) +
   stat_halfeye() +
   geom_vline(xintercept = 1, col='red')
-ggsave(filename = 'visualisations/simulated_data/factor_cov/psi_density.pdf')
+ggsave(filename = 'visualisations/simulated_data/factor_cov/onlyQ/psi_density.pdf')
 
 
 L_t
@@ -156,7 +163,7 @@ fit %>%
   geom_density(aes(x = sample), fill='grey', alpha=0.8) +
   geom_vline(data=L_t_df, aes(colour = Parameter, xintercept = value)) +
   facet_wrap(~Parameter)
-ggsave(filename = 'visualisations/simulated_data/factor_cov/L_t_offdiag_density.pdf')
+ggsave(filename = 'visualisations/simulated_data/factor_cov/onlyQ/L_t_offdiag_density.pdf')
 
 beta_c_df <- as_tibble(beta_c_sim) %>%
   mutate(Parameter = paste0("beta_c[",C,",",1:length(beta_c_sim),"]"))
@@ -170,7 +177,7 @@ fit %>%
   geom_density(aes(x = sample), fill='grey', alpha=0.8) +
   geom_vline(data=beta_c_df, aes(colour = Parameter, xintercept = value), show.legend = FALSE) +
   facet_wrap(~Parameter)
-ggsave(filename = 'visualisations/simulated_data/factor_cov/beta_c_density.pdf')
+ggsave(filename = 'visualisations/simulated_data/factor_cov/onlyQ/beta_c_density.pdf')
 
 colnames(alpha_sim) <- 1:5
 alpha_df <- as_tibble(alpha_sim) %>%
@@ -193,7 +200,7 @@ fit %>%
   geom_density(aes(x = sample), fill='grey', alpha=0.8) +
   geom_vline(data=alpha_df, aes(colour = Parameter, xintercept = value), show.legend = FALSE) +
   facet_wrap(~Parameter)
-ggsave(filename = 'visualisations/simulated_data/factor_cov/alpha_pm_density.pdf')
+ggsave(filename = 'visualisations/simulated_data/factor_cov/onlyQ/alpha_pm_density.pdf')
 
 # Get parameter estimates 
 model_samps <- rstan::extract(fit)
@@ -205,7 +212,8 @@ sum(delta.k_samps[1,1,1,1:9])
 
 # Review spline coefficients
 delta_k.mean <- apply(delta.k_samps, c(2,3,4), mean)
-knots.k <- c(4.625,8.250,11.875,15.500,19.125,22.750,26.375)
+# knots.k <- c(4.625,8.250,11.875,15.500,19.125,22.750,26.375)
+knots.k <- c( -5, 0 , 5 , 10, 15 , 20 , 25)
 
 ## Plot basis
 par(lwd = 3, cex.axis = 1.3, cex.lab = 1.3, cex.main = 1.3, mfrow = c(1,1))
@@ -229,6 +237,8 @@ axis(1, at = min(all_years):max(all_years))
 abline(v=knots.k, col = seq(1, H), lwd = 1)
 lines(all_years, random_spline_comp, type= "l", col = k, lwd = 1)
 
+year_index_table <- tibble(Year = all_years, index_year = 1:length(all_years))
+sector_index_table <- tibble(Sector = c('Public', 'Private'), index_sector = 1:2)
 
 # Get P estimates 
 P_samps <- model_samps$P
@@ -239,9 +249,9 @@ colnames(P_samps.mean) <- c('index_method', 'index_subnat', 'index_year', 'Publi
 P_samps.mean <- P_samps.mean %>% 
   mutate(across(everything(), as.numeric)) %>%
   left_join(method_index_table) %>%
+  # left_join(year_index_table) %>%
   pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Mean')
 
-sector_index_table <- tibble(Sector = c('Public', 'Private'), index_sector = 1:2)
 P_samps <- model_samps$P
 dim(P_samps)
 P_samps.quantile <- apply(P_samps, c(2,3,4,5), quantile, probs=c(0.025, 0.975), na.rm=TRUE)
@@ -250,6 +260,7 @@ colnames(P_samps.quantile) <- c('index_method', 'index_subnat','index_sector', '
 P_samps.quantile <- P_samps.quantile %>% 
   mutate(across(everything(), as.numeric)) %>%
   left_join(method_index_table) %>%
+  # left_join(year_index_table) %>%
   left_join(sector_index_table) 
 
 P_samps_df <- left_join(P_samps.mean, P_samps.quantile)
@@ -271,20 +282,40 @@ alpha_samps.mean <- alpha_samps.mean %>%
 # Get observed data 
 P_df<- P_sim_df_sample %>% 
   mutate(across(everything(), as.numeric)) %>%
-  left_join(method_index_table) %>%
+  left_join(method_index_table) %>% 
+  # rename(Year = index_year) %>%
   pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Observed')
 
 for(i in 1:P) {
   # Plot means vs observed values
   ggplot() +
-    geom_point(data = P_df %>% filter(index_subnat==i), aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +
-    geom_line(data = P_samps_df %>% filter(index_subnat==i), aes(x=index_year, y=Mean, colour=Sector, lty=Sector)) +
-    geom_ribbon(data = P_samps_df %>% filter(index_subnat==i), aes(x=index_year, ymin=lower_95, ymax = upper_95, fill=Sector), alpha=0.2) +
+    geom_point(data = P_df %>% filter(index_subnat==i & index_year > 10 & index_year < 31), aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +
+    geom_line(data = P_samps_df %>% filter(index_subnat==i & index_year > 10 & index_year < 31), aes(x=index_year, y=Mean, colour=Sector, lty=Sector)) +
+    geom_ribbon(data = P_samps_df %>% filter(index_subnat==i & index_year > 10 & index_year < 31), aes(x=index_year, ymin=lower_95, ymax = upper_95, fill=Sector), alpha=0.2) +
     geom_hline(data = alpha_samps.mean %>% filter(index_subnat==i), aes(yintercept = invlogit.alpha)) +
     facet_wrap(~Method)
-  ggsave(filename = paste0('visualisations/simulated_data/factor_cov/', i,'_simulated_proportions.pdf'))
+  ggsave(filename = paste0('visualisations/simulated_data/factor_cov/onlyQ/', i,'_simulated_proportions.pdf'))
 }
 
+# Review the var-cov of delta.k terms 
+D=2
+M_count = 5
+L_mean <- matrix(NA, nrow=5, ncol=2)
+L_t_mean <- apply(model_samps$L_t, 2, mean)
+L_d_mean <- apply(model_samps$L_d, 2, mean)
+psi_mean <-  apply(model_samps$psi, 2, mean)
+L_mean[1,2] = 0
+od=0
 
+for (j in 1:D) {
+  L_mean[j,j] = L_d_mean[j];
+  for (i in (j+1):M_count) {
+    od = od+1;
+    L_mean[i,j] = L_t_mean[od];
+  }
+}
 
-
+# compare Qsim and Qmean
+Q
+Q_mean = L_mean %*% t(L_mean) + diag(psi_mean)
+Q_mean
