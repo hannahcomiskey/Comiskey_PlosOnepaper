@@ -6,7 +6,7 @@ library(tidybayes)
 options(mc.cores = parallel::detectCores())
 rstan_options(threads_per_chain = 1, auto_write = TRUE)
 
-load("data/simulated_data_MVN_alpha.RData")
+load("data/simulated_data_N_alpha.RData")
 
 # Get logit of parameters and variance -----------------------------------------
 mydata <- P_sim_df_sample[,c("Public")] %>%
@@ -52,8 +52,6 @@ inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   Zih = Zih,
                   intercept = rep(1, n_all_years),
                   n_years = n_all_years,
-                  delta_mu = rep(0, 5),
-                  beta_mu = rep(0, 5),
                   n_obs = nrow(logit.data),
                   K = K,
                   H = H,
@@ -64,33 +62,31 @@ inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   matchsubnat = simmatchsubnat,
                   matchcountry = simmatchcountry,
                   matchmethod = simmatchmethod,
-                  matchyears = simmatchyears,
-                  sigma_y = rep(1, 5)
-)
+                  matchyears = simmatchyears)
 
 ## Parameters to look at ------------------------------
 pars <- c("alpha_pms", # required for P
           "delta_k",
           "beta_c",
-          "L_Sigma_beta",
-          "L_Sigma_delta",
           "sigma_alpha",
           "sigma_y",
+          "sigma_beta",
+          "sigma_delta",
           "P")
 
 # Run stan model ------------------
 
 fit <- stan(
-  file = "model/STAN/zih_deltak_public_private_logit.stan",  # Stan program
+  file = "model/STAN/zih_deltak_public_private_logit_allN.stan",  # Stan program
   data = inputdata,    # named list of data
   pars = pars,
-  iter = 80000,         # total number of iterations per chain
+  iter = 50000,         # total number of iterations per chain
   warmup = 10000,
-  thin=35,
+  thin=20,
   chains=3,
   save_warmup = FALSE,
   control=list(adapt_delta=0.99)
 )
 
 
-saveRDS(fit, file='results/STAN_model_test_zih_simdata_MVN_alpha_N_delta.RDS')
+saveRDS(fit, file='results/STAN_model_test_zih_simdata_N_alpha_N_delta.RDS')

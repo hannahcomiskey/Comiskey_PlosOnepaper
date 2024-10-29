@@ -1,0 +1,92 @@
+data {  
+  int<lower=1> n_years; // Number of years
+  int<lower=1> n_obs; // Number of observations
+  int<lower=1> H; // Number of knots
+  int<lower=1> K; // Number of spline cofficients (H+1)
+  int<lower=1> P_count; // Number of provinces
+  int<lower=1> C_count; // Number of countries
+  int<lower=1> M_count; // Number of methods
+  int<lower=1> S_count; // Number of sectors
+  array[P_count] int<lower=1, upper=K> kstar; // Spline index K star for estimation
+  matrix[n_years, K] Bik[P_count]; // Basis functions
+  int zero;
+  int matchcountry[P_count]; // country indexing
+  int matchmethod[n_obs] ; // method indexing
+  int matchyears[n_obs]; // year indexing
+  int matchsubnat[n_obs]; // subnat indexing 
+  vector[n_obs] y; // proportions
+  vector[n_obs] se_prop; // standard errors
+}
+
+parameters {   // The parameters accepted by the model. 
+  real alpha_pms[M_count, P_count] ; // expected mean trend
+  vector<lower=0>[M_count] sigma_alpha; // variance of mean trend
+  vector<lower=0>[M_count] sigma_delta; // variance of mean trend
+  vector<lower=0>[M_count] sigma_beta; // variance of mean trend
+  vector[M_count] beta_c[C_count]; // overall country mean trend
+  vector[H] delta_k_raw[M_count, P_count]; // variation associated with time
+
+}
+
+transformed parameters { 
+  vector[H] delta_k[M_count, P_count]; // variation associated with time
+  vector[K] beta_k[M_count, P_count]; // spline coefficients
+  vector[n_years] z[M_count, P_count]; // latent variable
+  matrix[S_count, n_years] P[M_count, P_count]; // logit observation
+  for(m in 1:M_count){ 
+    for(p in 1:P_count){
+      
+      // Rates of change between splines
+      for(h in 1:(H-1)){
+        delta_k[p,m,h] = delta_k_raw[m,p,h]; // delta are the slopes for logit rates of change in province p, method m, sector s.
+      } // end H loop
+      delta_k[m,p,H] = -sum(delta_k[m,p,1:(H-1)]);
+      
+      // Spline coefficients
+      beta_k[m,p,kstar[p]] = zero; // set spline coefficient to 0
+      for(j in (kstar[p]+1):K) {
+        beta_k[m,p,j] = beta_k[m,p,j-1] + delta_k[p,m, j-1];
+      } // after kstar
+      for(j in 1:(kstar[p]-1)) { // Estimating spline coefficient here
+        int t = kstar[p] - j;
+        beta_k[m,p,t] = beta_k[m,p,t+1] - delta_k[p,m, t];
+      } // before kstar
+      
+      // Latent variable
+      for(t in 1:n_years) {
+        z[m,p,t] = alpha_pms[m,p] + dot_product(Bik[p,t,1:K],beta_k[m,p,1:K]); // Public sector proprtion on logit scale
+      }
+      
+      // Proportions
+      P[m, p, 1] = to_row_vector(inv_logit(z[m, p])) ;
+      P[m, p, 2] = to_row_vector(1 - P[m, p, 1]) ;
+    } // end P loop 
+  } // end M loop
+}
+
+model { 
+  // Priors
+  sigma_beta ~ normal(0,2);
+  sigma_alpha ~ normal(0,2); // cross-country variance (within a method)
+  sigma_delta ~ normal(0,2); // cross-country variance (within a method)
+ 
+  // Hierarchical estimation of intercept
+  for(m in 1:M_count){
+    for(c in 1:C_count){   // Country intercepts
+      beta_c[c,m] ~ normal(0, sigma_beta[m]);
+    } // end C loop
+    for(p in 1:P_count){
+      alpha_pms[m,p] ~ normal(beta_c[matchcountry[p], m],sigma_alpha[m]); // sharing info across methods within a province so each province public/private sector has an intercept.
+      for(h in 1:(H-1)){
+        delta_k_raw[m,p,h] ~ normal(0, sigma_delta[m]); // delta are the slopes for logit rates of change in province p, method m, sector s.
+      } // end H loop
+    } // end P loop
+  } // end M loop
+
+  // Likelihood
+  for (k in 1:n_obs) {
+    y[k] ~ normal(z[matchmethod[k],matchsubnat[k], matchyears[k]], se_prop[k]);
+  }
+}
+
+

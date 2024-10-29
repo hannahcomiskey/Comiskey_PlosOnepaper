@@ -8,7 +8,7 @@ library(bayesplot)
 options(mc.cores = parallel::detectCores())
 rstan_options(threads_per_chain = 1, auto_write = TRUE)
 
-load("data/simulated_data_new.RData")
+load("data/simulated_data_N_alpha.RData")
 
 # Get logit of parameters and variance --------------------
 mydata <- P_sim_df_sample[,c("Public")] %>%
@@ -36,31 +36,25 @@ simmatchmethod <- as.vector(as.numeric(P_sim_df_sample$index_method))
 simmatchyears <- as.vector(as.numeric(P_sim_df_sample$index_year))
 simmatchcountry <- matchcountry
 n_all_years <- length(all_years)
-
-
 D=3
 M_count = 5
 OD_count  = D*(M_count-D)+ D*(D-1)/2
 
 
 # Fit model -----------------------------------------
-fit <- readRDS('results/STAN_model_test_zih_simdata_sigmay.RDS')
+fit <- readRDS('results/STAN_model_test_zih_simdata_N_alpha_N_delta.RDS')
 
 # shiny::launch_shinystan(fit)
 
-traceplot(fit, pars = c("alpha_pms[3,1]", "alpha_pms[3,2]", "alpha_pms[3,3]", "alpha_pms[3,4]", "alpha_pms[3,5]", "alpha_pms[3,6]"), inc_warmup = FALSE, nrow = 6)
-# traceplot(fit, pars = c("sigmabeta_Omega[1,1]",
-#                         "sigmabeta_Omega[2,2]",
-#                         "sigmabeta_Omega[3,3]",
-#                         "sigmabeta_Omega[4,4]",
-#                         "sigmabeta_Omega[5,5]"), inc_warmup = FALSE, nrow = 5)
+traceplot(fit, pars = c("alpha_pms[3,1]", "alpha_pms[3,2]", "alpha_pms[3,3]", "alpha_pms[3,4]", "alpha_pms[3,5]"), inc_warmup = FALSE, nrow = 6)
 traceplot(fit, pars = c("delta_k[1,1,1]",  "delta_k[2,3,5]",  "delta_k[3,2,2]", "delta_k[4,5,7]", "delta_k[5,4,6]"), inc_warmup = FALSE, nrow = 6)
-traceplot(fit, pars = c("L_Sigma_beta"), inc_warmup = FALSE, nrow = 6)
-traceplot(fit, pars = c("L_Sigma_delta"), inc_warmup = FALSE, nrow = 6)
+# traceplot(fit, pars = c("sigmabeta_tau"), inc_warmup = FALSE, nrow = 6)
+# traceplot(fit, pars = c("sigmabeta_Omega"), inc_warmup = FALSE, nrow = 6)
 traceplot(fit, pars = c("sigma_alpha"), inc_warmup = FALSE, nrow = 5)
-traceplot(fit, pars = c("beta_c"), inc_warmup = FALSE, ncol = 5)
+traceplot(fit, pars = c("sigma_delta"), inc_warmup = FALSE, nrow = 5)
+traceplot(fit, pars = c("beta_c"), inc_warmup = FALSE, nrow = 5)
 
-pairs(fit, pars = "L_Sigma_beta")
+pairs(fit, pars = "sigma_y")
 
 code <- get_stancode(fit)
 cat(code)
@@ -78,11 +72,6 @@ mcmc_rhat(rhats) + yaxis_text(hjust = 1)
 ratios <- bayesplot::neff_ratio(fit)
 print(ratios)
 mcmc_neff(ratios)
-
-plot(fit, pars=c('L_Sigma_beta'))
-plot(fit, pars=c('L_Sigma_delta'))
-
-pairs(fit,pars=c("beta_c"))
 
 mcmc_nuts_divergence(nuts_params(fit), log_posterior(fit))
 
@@ -103,7 +92,29 @@ sum(delta.k_samps[1,1,1,1:9])
 
 # Review spline coefficients
 delta_k.mean <- apply(delta.k_samps, c(2,3,4), mean)
-knots.k <- c(4.625,8.250,11.875,15.500,19.125,22.750,26.375)
+
+# testing splines ------------------------------------------------------------
+all_years <- -10:30
+B <- splines::bs(all_years, df=10, degree=3, intercept = FALSE)
+K <-dim(B)[2]
+B.ik <- B
+D.hk <- diff(diag(K), diff = 1) # first order difference matrix (h = k-1)
+Q.kh <- t(D.hk)%*%solve(D.hk%*%t(D.hk))
+Zih <- B.ik%*%Q.kh 
+knots.k <- c(-5, 0, 5, 10, 15, 20, 25)
+year_index_table <- tibble(Year = all_years, index_year = 1:length(all_years))
+
+P_sim_df_sample <- P_sim_df_sample %>% 
+  rename(Year = index_year) %>%
+  mutate_if(is.character, as.numeric) %>%
+  left_join(year_index_table)
+
+# Set up model inputs ----------------------------------------------------------
+simmatchsubnat <- as.vector(as.numeric(P_sim_df_sample$index_subnat))
+simmatchmethod <- as.vector(as.numeric(P_sim_df_sample$index_method))
+simmatchyears <- as.vector(as.numeric(P_sim_df_sample$index_year))
+simmatchcountry <- matchcountry
+n_all_years <- length(all_years)
 
 ## Plot basis
 par(lwd = 3, cex.axis = 1.3, cex.lab = 1.3, cex.main = 1.3, mfrow = c(1,1))
@@ -145,18 +156,15 @@ beta_c_sim <- t(beta_c_sim)
 colnames(beta_c_sim) <- 1:5
 beta_c_df <- as_tibble(beta_c_sim) %>%
   pivot_longer(cols=c(`1`:`5`), names_to = 'index_method', values_to ='value') %>%
-  mutate(index_country = rep(1:4, each=5),
-         Parameter = paste0("beta_c[",rep(1:4, each=5),",",rep(1:5, 4),"]"))
+  mutate(index_country = rep(1, each=1),
+         Parameter = paste0("beta_c[",rep(1, each=5),",",rep(1:5, 1),"]"))
 
 fit %>%
-  spread_draws(`beta_c[1,1]`, `beta_c[1,2]`, `beta_c[1,3]`, `beta_c[1,4]`, `beta_c[1,5]`,
-               `beta_c[2,1]`, `beta_c[2,2]`, `beta_c[2,3]`, `beta_c[2,4]`, `beta_c[2,5]`,
-               `beta_c[3,1]`, `beta_c[3,2]`, `beta_c[3,3]`, `beta_c[3,4]`, `beta_c[3,5]`,
-               `beta_c[4,1]`, `beta_c[4,2]`, `beta_c[4,3]`, `beta_c[4,4]`, `beta_c[4,5]`) %>%
-  pivot_longer(cols = c(`beta_c[1,1]`, `beta_c[1,2]`, `beta_c[1,3]`, `beta_c[1,4]`, `beta_c[1,5]`,
-                        `beta_c[2,1]`, `beta_c[2,2]`, `beta_c[2,3]`, `beta_c[2,4]`, `beta_c[2,5]`,
-                        `beta_c[3,1]`, `beta_c[3,2]`, `beta_c[3,3]`, `beta_c[3,4]`, `beta_c[3,5]`,
-                        `beta_c[4,1]`, `beta_c[4,2]`, `beta_c[4,3]`, `beta_c[4,4]`, `beta_c[4,5]`), names_to='Parameter', values_to = 'sample') %>%
+  spread_draws(`beta_c[1,1]`, `beta_c[1,2]`, `beta_c[1,3]`, `beta_c[1,4]`, `beta_c[1,5]`) %>%
+               # `beta_c[2,1]`, `beta_c[2,2]`, `beta_c[2,3]`, `beta_c[2,4]`, `beta_c[2,5]`,
+               # `beta_c[3,1]`, `beta_c[3,2]`, `beta_c[3,3]`, `beta_c[3,4]`, `beta_c[3,5]`,
+               # `beta_c[4,1]`, `beta_c[4,2]`, `beta_c[4,3]`, `beta_c[4,4]`, `beta_c[4,5]`
+  pivot_longer(cols = c(`beta_c[1,1]`, `beta_c[1,2]`, `beta_c[1,3]`, `beta_c[1,4]`, `beta_c[1,5]`), names_to='Parameter', values_to = 'sample') %>%
   ggplot() +
   #stat_halfeye(aes(y = Parameter, x = sample)) +
   geom_density(aes(x = sample), fill='grey', alpha=0.8) +
@@ -222,7 +230,7 @@ colnames(alpha_samps.mean) <- c(1:20)
 alpha_samps.mean <- alpha_samps.mean %>%
   pivot_longer(cols=everything(), names_to = 'index_subnat', values_to = 'alpha_mean')
 alpha_samps.mean <- alpha_samps.mean %>%
-  mutate(index_method = rep(1:5, each=20))
+  mutate(index_method = rep(1:5, each=P))
 alpha_samps.mean <- alpha_samps.mean %>% 
   mutate(across(everything(), as.numeric)) %>%
   left_join(method_index_table) %>%
@@ -236,7 +244,7 @@ P_df<- P_sim_df_sample %>%
   left_join(method_index_table) %>%
   pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Observed')
 
-subnatid = 5
+subnatid = 4
 # Plot means vs observed values
 ggplot() +
   geom_point(data = P_df %>% filter(index_subnat==subnatid), aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +

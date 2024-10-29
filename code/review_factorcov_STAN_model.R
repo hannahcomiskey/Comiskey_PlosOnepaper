@@ -1,6 +1,7 @@
 library(rstan)
 library(tidyverse)
 library(tidybayes)
+library(bayesplot)
 
 # Source simulated data --------------------------------------------------------
 options(mc.cores = parallel::detectCores())
@@ -42,14 +43,13 @@ simmatchmethod <- as.vector(as.numeric(P_sim_df_sample$index_method))
 simmatchyears <- as.vector(as.numeric(P_sim_df_sample$index_year))
 simmatchcountry <- matchcountry
 n_all_years <- length(all_years)
-
 D=2
 M_count = 5
 OD_count  = D*(M_count-D)+ D*(D-1)/2
 
 
 # Fit model -----------------------------------------
-fit <- readRDS('results/STAN_model_test_zih_deltak_factorcov_Q_2.RDS')
+fit <- readRDS('results/STAN_model_test_zih_deltak_factorcov_Q_3.RDS')
 
 # traceplot(fit, pars = c("delta_k[1,1,1]",
 #                         "delta_k[2,3,5]",

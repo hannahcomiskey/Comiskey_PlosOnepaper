@@ -3,10 +3,10 @@
 ##############################################
 subnat_FPsource_data <- readRDS("data/subnat_bivar_SE_source_data_20.RDS") # All countries
 
-FP_2030_countries <- c("Kenya","Cameroon", 'Benin', 'India')
+FP_2030_countries <- c("Kenya" ,"Cameroon") #, 'Benin', 'India')
 
 subnat_FPsource_data <- subnat_FPsource_data %>% 
-  #filter(Country %in% FP_2030_countries) %>%
+  filter(Country %in% FP_2030_countries) %>%
   ungroup() %>%
   dplyr::mutate(Region = stringr::str_to_title(Region))
 
@@ -61,14 +61,16 @@ SE_source_data_wide_X <- SE_source_data_wide_X %>% left_join(DEFT_data)
 
 # https://onlinestatbook.com/2/sampling_distributions/samp_dist_p.html
 
-for(i in 1:nrow(SE_source_data_wide_X)) {
-  num.SE0 <- which(SE_source_data_wide_X[i,c("Public.SE", "Private.SE")]<0.005)
-  num.SEna <- which(is.na(SE_source_data_wide_X[i,c("Public.SE", "Private.SE")])==TRUE)
-  DEFT <- ifelse(is.na(SE_source_data_wide_X$DEFT[i])==TRUE, 1.5, SE_source_data_wide_X$DEFT[i])
-  N1 <- sum(SE_source_data_wide_X[i, c('Public_n', 'Private_n')], na.rm=TRUE) # Number of women surveyed
-  phat <- 0.5/(N1+1) # Posterior mean of p under Jefferys prior for true prevalence of 0s.
-  SE.hat <- sqrt((phat*(1-phat))/N1)
-  SE_source_data_wide_X[i,c(col_index+num.SEna,col_index+num.SE0)] <- SE.hat*DEFT
+if(nrow(SE_source_data_wide_X)>0) {
+  for(i in 1:nrow(SE_source_data_wide_X)) {
+    num.SE0 <- which(SE_source_data_wide_X[i,c("Public.SE", "Private.SE")]<0.005)
+    num.SEna <- which(is.na(SE_source_data_wide_X[i,c("Public.SE", "Private.SE")])==TRUE)
+    DEFT <- ifelse(is.na(SE_source_data_wide_X$DEFT[i])==TRUE, 1.5, SE_source_data_wide_X$DEFT[i])
+    N1 <- sum(SE_source_data_wide_X[i, c('Public_n', 'Private_n')], na.rm=TRUE) # Number of women surveyed
+    phat <- 0.5/(N1+1) # Posterior mean of p under Jefferys prior for true prevalence of 0s.
+    SE.hat <- sqrt((phat*(1-phat))/N1)
+    SE_source_data_wide_X[i,c(col_index+num.SEna,col_index+num.SE0)] <- SE.hat*DEFT
+  }
 }
 
 FP_source_data_wide <- bind_rows(SE_source_data_wide_norm, SE_source_data_wide_X) # Put data back together again

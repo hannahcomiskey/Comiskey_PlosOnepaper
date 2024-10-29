@@ -21,12 +21,20 @@ logit.data <- mydata %>%
          logit.Public.SE = sqrt(logit.Public.Var))
 
 # # testing splines ------------------------------------------------------------
+all_years <- -10:30
 B <- splines::bs(all_years, df=10, degree=3, intercept = FALSE)
 K <-dim(B)[2]
 B.ik <- B
 D.hk <- diff(diag(K), diff = 1) # first order difference matrix (h = k-1)
 Q.kh <- t(D.hk)%*%solve(D.hk%*%t(D.hk))
 Zih <- B.ik%*%Q.kh 
+
+year_index_table <- tibble(Year = all_years, index_year = 1:length(all_years))
+
+P_sim_df_sample <- P_sim_df_sample %>% 
+  rename(Year = index_year) %>%
+  mutate_if(is.character, as.numeric) %>%
+  left_join(year_index_table)
 
 # Set up model inputs ----------------------------------------------------------
 simmatchsubnat <- as.vector(as.numeric(P_sim_df_sample$index_subnat))
