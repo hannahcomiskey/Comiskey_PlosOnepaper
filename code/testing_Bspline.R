@@ -41,6 +41,7 @@ inputdata <- list(Y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   num_knots = nrow(B),
                   P_count = P,
                   M_count = M,
+                  S_count = 2,
                   B = B,
                   matchsubnat = simmatchsubnat,
                   matchmethod = simmatchmethod,
@@ -52,7 +53,7 @@ pars <- c("Y_hat",
           "a0",
           "a",
           "tau",
-          "P_sim")
+          "P")
 
 # Run stan model ------------------
 
@@ -63,7 +64,7 @@ fit <- stan(
   iter = 10000,         # total number of iterations per chain
   warmup = 2000,
   thin=4,
-  chains=3,
+  chains=1,
   save_warmup = FALSE,
   control=list(adapt_delta=0.99, max_treedepth=12)
 )
