@@ -19,18 +19,18 @@ data {
 }
 
 parameters {   // The parameters accepted by the model. 
-  real<lower=-9, upper=9> alpha_pms[M_count, P_count] ; // expected mean trend
+  real alpha_pms[M_count, P_count] ; // expected mean trend
   vector<lower=0>[M_count] sigma_alpha; // variance of mean trend
   vector<lower=0>[M_count] sigma_delta; // variance of mean trend
   vector<lower=0>[M_count] sigma_beta; // variance of mean trend
-  vector<lower=-9, upper=9> [M_count] beta_c[C_count]; // overall country mean trend
+  vector [M_count] beta_c[C_count]; // overall country mean trend
   vector[H] delta_k[P_count, M_count]; // variation associated with time
 }
 
 transformed parameters { 
   vector[K] beta_k[M_count, P_count]; // spline coefficients
   vector[n_years] z[M_count, P_count]; // latent variable
-  matrix[S_count, n_years] P[M_count, P_count]; // logit observation
+  matrix<lower=0, upper=1>[S_count, n_years] P[M_count, P_count]; // logit observation
   for(m in 1:M_count){ 
     for(p in 1:P_count){
       

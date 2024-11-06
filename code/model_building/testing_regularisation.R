@@ -50,7 +50,6 @@ data {
   int<lower=1> M_count; // Number of methods
   int<lower=1> S_count; // Number of sectors
   array[P_count] int<lower=1, upper=K> kstar; // Spline index K star for estimation
-  // vector[K] Bik[P_count, n_years]; // Basis functions
   matrix[n_years, K] Bik; // Basis functions
   int zero;
   int matchcountry[P_count]; // country indexing
@@ -58,6 +57,7 @@ data {
   int matchyears[n_obs]; // year indexing
   int matchsubnat[n_obs]; // subnat indexing 
   vector[n_obs] y; // proportions
+  real<lower=0> scale_global ; // scale for the half -t prior for tau
   }
 
 parameters {   // The parameters accepted by the model. 
@@ -65,18 +65,28 @@ parameters {   // The parameters accepted by the model.
   vector<lower=0>[M_count] sigma_delta; // variance of mean trend
   vector<lower=0>[M_count] sigma_alpha; // variance of mean trend
   vector<lower=0>[M_count] sigma_beta; // variance of mean trend
-   vector<lower=0>[M_count] sigma_y; // variance of data
-  real<lower=-9, upper=9> alpha_pms[M_count, P_count] ; // expected mean trend
-  matrix<lower=-9, upper=9>[C_count, M_count] beta_c ; // expected mean trend
+  real alpha_pms[M_count, P_count] ; // expected mean trend
+  matrix[C_count, M_count] beta_c ; // expected mean trend
+  real<lower=0> tau; 
+  real c_sq;
+  vector<lower=0>[H] lambda[P_count, M_count];
+  real logsigma;
 }
 
 transformed parameters { 
   vector[K] beta_k[M_count, P_count]; // spline coefficients
   vector[n_years] z[M_count, P_count]; // latent variable
   matrix[S_count, n_years] P[M_count, P_count]; // logit observation
+  vector[H] lstar_sq[P_count, M_count];
+  real <lower=0> sigma ;  // noise std
+  
+  sigma = exp(logsigma);
+  
   for(m in 1:M_count){ 
     for(p in 1:P_count){
-      
+      for(h in 1:H){
+        lstar_sq[p,m,h] = (c_sq*pow(lambda[p,m,h],2))/(c_sq+pow(tau,2)*pow(lambda[p,m,h],2));
+      }
       // Spline coefficients
       beta_k[m,p,kstar[p]] = zero; // set spline coefficient to 0
       for(j in (kstar[p]+1):K) {
@@ -102,9 +112,10 @@ transformed parameters {
 model { 
   // Priors
   sigma_delta ~ normal(0,2);
-  sigma_alpha ~ normal(0, 1);
+  sigma_alpha ~ normal(0,2);
   sigma_beta ~ normal(0,2);
-  sigma_y ~ normal(0, 1);
+  c_sq ~ inv_gamma(2, 8);
+  tau ~ student_t(3 , 0, scale_global*sigma);
   
   // Hierarchical estimation of intercept
   for(m in 1:M_count){
@@ -114,14 +125,15 @@ model {
     for(p in 1:P_count){
       alpha_pms[m,p] ~ normal(beta_c[matchcountry[p], m],sigma_alpha[m]); // sharing info across methods within a province so each province public/private sector has an intercept.
       for(h in 1:H){
-        delta_k[p,m,h] ~ normal(0, sigma_delta[m]); // delta are the slopes for logit rates of change in province p, method m, sector s.
+        lambda[p,m,h] ~ cauchy(0,1);
+        delta_k[p,m,h] ~ normal(0, pow(tau,2)*lstar_sq[p,m,h]); // delta are the slopes for logit rates of change in province p, method m, sector s.
       } // end H loop
     } // end P loop
   } // end M loop
 
   // Likelihood
   for (k in 1:n_obs) {
-    y[k] ~ normal(z[matchmethod[k],matchsubnat[k], matchyears[k]], sigma_y[matchmethod[k]]);
+    y[k] ~ normal(z[matchmethod[k],matchsubnat[k], matchyears[k]], 1);
   }
 }
 
@@ -168,6 +180,10 @@ for(i in 1:P) {
   
 }
 
+# let p0=3, D=H and n=n_obs 
+# See 3.12 Vehtari paper.
+scale_global = 3/((H-3)*sqrt(nrow(logit.data)))
+  
 ## The required data ------------------------------
 inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using total proportions as collapsing over sectors
                   Bik = Bik,
@@ -184,7 +200,8 @@ inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   matchsubnat = simmatchsubnat,
                   matchcountry = simmatchcountry,
                   matchmethod = simmatchmethod,
-                  matchyears = simmatchyears
+                  matchyears = simmatchyears,
+                  scale_global=scale_global
                   )
 
 ## Parameters to look at ------------------------------
@@ -192,11 +209,13 @@ pars <- c("delta_k",
           "sigma_delta",
           "sigma_alpha",
           "sigma_beta",
-          "sigma_y",
           "beta_k",
           "alpha_pms",
           "beta_c",
-          "P")
+          "P",
+          "tau",
+          "lambda",
+          "c_sq")
 
 # Run stan model ------------------
 
@@ -211,11 +230,9 @@ fit <- stan(
   save_warmup = FALSE,
   control=list(adapt_delta=0.99, max_treedepth=12)
 )
+saveRDS(fit, 'results/regularisation_model_testing_2.RData')
 
-saveRDS(fit, 'results/model_testing_allN_newKenya.RData')
-
-# fit <- readRDS('results/model_testing_allN_newKenya.RData')
-# 
+# fit <- readRDS( 'results/regularisation_model_testing.RData')
 # code <- get_stancode(fit)
 # cat(code)
 # 
@@ -249,18 +266,10 @@ saveRDS(fit, 'results/model_testing_allN_newKenya.RData')
 # nondiv_params <- partition[[2]]
 # 
 # par(mar = c(4, 4, 0.5, 0.5))
-# plot(nondiv_params$`alpha_pms[3,3]`, log(nondiv_params$`sigma_alpha[3]`),
+# plot(nondiv_params$`alpha_pms[2,5]`, nondiv_params$`sigma_alpha[5]`,
 #      col=c_dark, pch=16, cex=0.8)
-# points(div_params$`alpha_pms[3,3]`, log(div_params$`sigma_alpha[3]`),
+# points(div_params$`alpha_pms[2,5]`, div_params$`sigma_alpha[5]`,
 #        col=green, pch=16, cex=0.8)
-# 
-# 
-# par(mar = c(4, 4, 0.5, 0.5))
-# plot(nondiv_params$`delta_k[3,3,6]`, log(nondiv_params$`sigma_delta[3]`),
-#      col=c_dark, pch=16, cex=0.8)
-# points(div_params$`delta_k[3,3,6]`, log(div_params$`sigma_delta[3]`),
-#        col=green, pch=16, cex=0.8)
-# 
 # 
 # 
 # # Plot beta spline coefficients
@@ -351,28 +360,12 @@ saveRDS(fit, 'results/model_testing_allN_newKenya.RData')
 #   left_join(method_index_table) %>%
 #   pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Observed')
 # 
-# 
+# subnatid = 3
 # # Plot means vs observed values
 # ggplot() +
-#   geom_point(data = P_df, aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +
-#   geom_line(data = P_samps_df, aes(x=index_year, y=Mean, colour=Sector, lty=Sector)) +
-#   geom_ribbon(data = P_samps_df, aes(x=index_year, ymin=lower_95, ymax = upper_95, fill=Sector), alpha=0.2) +
-#   facet_wrap(~interaction(Method, index_subnat), ncol=5)
+#   geom_point(data = P_df %>% filter(index_subnat==subnatid), aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +
+#   geom_line(data = P_samps_df %>% filter(index_subnat==subnatid), aes(x=index_year, y=Mean, colour=Sector, lty=Sector)) +
+#   geom_ribbon(data = P_samps_df %>% filter(index_subnat==subnatid), aes(x=index_year, ymin=lower_95, ymax = upper_95, fill=Sector), alpha=0.2) +
+#   facet_wrap(~Method)
 # 
 # 
-# alpha_samps <- model_samps$alpha_pms
-# dim(alpha_samps)
-# alpha_mean <- apply(alpha_samps, c(2,3), mean)
-# colnames(alpha_mean) <- 1:P
-# 
-# alpha_mean <- as_tibble(alpha_mean) %>%
-#   mutate(index_method = 1:M) %>%
-#   pivot_longer(cols=`1`:`6`, names_to = 'index_subnat', values_to = 'alpha') %>%
-#   mutate(invlogit.alpha = exp(alpha)/(1+exp(alpha))) %>%
-#   left_join(method_index_table) 
-# 
-# ggplot() +
-#   geom_point(data = P_df , aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +
-#   geom_line(data = P_df, aes(x=index_year, y=Observed, colour=Sector, lty=Sector)) +
-#   geom_hline(data=alpha_mean, aes(yintercept = invlogit.alpha)) +
-#   facet_wrap(~interaction(Method, index_subnat), ncol = 5) 

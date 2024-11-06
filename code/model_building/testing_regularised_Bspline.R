@@ -26,12 +26,24 @@ B <- t(splines::bs(X, degree=3, knots=c(seq(1, 20, by=4)),  intercept = TRUE)) #
 num_data <- length(X)
 num_basis <- nrow(B)
 
+year_index_table <- tibble(Year = X, index_year = 1:length(X))
+
+P_sim_df_sample <- P_sim_df_sample %>% 
+  rename(Year = index_year) %>%
+  mutate_if(is.character, as.numeric) %>%
+  left_join(year_index_table)
+
+
 # Set up model inputs ----------------------------------------------------------
 simmatchsubnat <- as.vector(as.numeric(P_sim_df_sample$index_subnat))
 simmatchmethod <- as.vector(as.numeric(P_sim_df_sample$index_method))
 simmatchyears <- as.vector(as.numeric(P_sim_df_sample$index_year))
 n_all_years <- length(X)
 M_count = 5
+
+# let p0=3, D=H and n=n_obs 
+# See 3.12 Vehtari paper.
+scale_global = 3/((num_basis-3)*sqrt(nrow(logit.data)))
 
 ## The required data ------------------------------
 inputdata <- list(Y = as.vector(unlist(logit.data[,c("logit.Public")])), # using total proportions as collapsing over sectors
@@ -45,7 +57,8 @@ inputdata <- list(Y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   B = B,
                   matchsubnat = simmatchsubnat,
                   matchmethod = simmatchmethod,
-                  matchyears = simmatchyears
+                  matchyears = simmatchyears,
+                  scale_global=scale_global
                   )
 
 ## Parameters to look at ------------------------------
@@ -59,19 +72,20 @@ pars <- c("Y_hat",
 
 fit <- stan(
   data = inputdata,    # named list of data
-  file = 'model/STAN/Bspline_model.stan',
+  file = 'model/STAN/regularised_Bspline_model.stan',
   pars = pars,
   iter = 10000,         # total number of iterations per chain
   warmup = 2000,
   thin=4,
-  chains=1,
+  chains=3,
   save_warmup = FALSE,
   control=list(adapt_delta=0.99, max_treedepth=12)
 )
 
-saveRDS(fit, 'results/model_testing_Bspline.RData')
+saveRDS(fit, 'results/model_testing_Bspline_regularised.RData')
 
 # fit <- readRDS('results/model_testing_Bspline.RData')
+# 
 # code <- get_stancode(fit)
 # cat(code)
 # 
@@ -91,9 +105,9 @@ saveRDS(fit, 'results/model_testing_Bspline.RData')
 # 
 # model_samps <- rstan::extract(fit)
 # 
-# traceplot(fit, pars = c("alpha_pms"), inc_warmup = FALSE, nrow = 6)
-# traceplot(fit, pars = c("sigma_alpha"), inc_warmup = FALSE, nrow = 5)
-# traceplot(fit, pars = c("sigma_delta"), inc_warmup = FALSE, nrow = 5)
+# traceplot(fit, pars = c("a0"), inc_warmup = FALSE, nrow = 6)
+# traceplot(fit, pars = c("tau"), inc_warmup = FALSE, nrow = 5)
+# traceplot(fit, pars = c("a"), inc_warmup = FALSE, nrow = 5)
 # 
 # 
 # # Check divergences
@@ -120,69 +134,23 @@ saveRDS(fit, 'results/model_testing_Bspline.RData')
 # 
 # 
 # # Plot beta spline coefficients
-# betak_samps <- model_samps$beta_k
+# betak_samps <- model_samps$a
 # dim(betak_samps)
 # betak_samps.mean <- apply(betak_samps, c(2,3,4), mean)
 # dim(betak_samps.mean)
 # 
-# betak_test <- tibble(Beta_k = betak_samps.mean[1,3,], H=1:13)
+# betak_test <- tibble(Beta_k = betak_samps.mean[1,3,], K=1:nrow(B))
 # 
 # ggplot() +
-#   geom_line(data = betak_test, aes(x=H, y=Beta_k))
-# 
-# random_spline_comp <- Bik %*% betak_samps.mean[2,3,]
-# ## Plot basis
-# par(lwd = 3, cex.axis = 1.3, cex.lab = 1.3, cex.main = 1.3, mfrow = c(1,1))
-# plot(all_years,random_spline_comp[,1], type= "n", xaxt="n",
-#      xlab = "Year", ylab ="Basis Function",
-#      xlim = range(all_years))
-# axis(1, at = min(all_years):max(all_years))
-# abline(v=knots.k, col = seq(1, H), lwd = 1)
-# lines(all_years, random_spline_comp, type= "l", col = k, lwd = 1)
-# 
-# subnatid = 5
-# # # Get Z estimates
-# #
-# # # From simulation
-# # z_tmp <- array(dim=c(M, P, n_years))
-# # for(m in 1:M) {
-# #   for(p in 1:P) {
-# #     for(t in 1:n_years) {
-# #       z_tmp[m,p,t] = alpha_sim[m,p] + sum(betak_samps.mean[m,p,]*Bik[t,])
-# #     }
-# #   }
-# # }
-# # z_tmp <- plyr::adply(z_tmp, .margins=c(1,2,3))
-# # colnames(z_tmp) <- c('index_method', 'index_subnat', 'index_year', 'Z')
-# # z_tmp <- z_tmp %>%
-# #   mutate(across(everything(), as.numeric)) %>%
-# #   left_join(method_index_table)
-# # # Plot means vs observed values
-# # ggplot() +
-# #   geom_line(data = z_tmp %>% filter(index_subnat==5), aes(x=index_year, y=Z)) +
-# #   facet_wrap(~Method)
-# #
-# # # From model
-# # Z_samps <- model_samps$z
-# # dim(Z_samps)
-# # Z_samps.mean <- apply(Z_samps, c(2,3,4), mean)
-# # Z_samps.mean <- plyr::adply(Z_samps.mean, .margins=c(1,2,3))
-# # colnames(Z_samps.mean) <- c('index_method', 'index_subnat', 'index_year', 'Z')
-# # Z_samps.mean <- Z_samps.mean %>%
-# #   mutate(across(everything(), as.numeric)) %>%
-# #   left_join(method_index_table)
-# # # Plot means vs observed values
-# # ggplot() +
-# #   geom_point(data = Z_samps.mean %>% filter(index_subnat==subnatid), aes(x=index_year, y=Z)) +
-# #   geom_line(data = Z_samps.mean %>% filter(index_subnat==subnatid), aes(x=index_year, y=Z)) +
-# #   facet_wrap(~Method)
+#   geom_line(data = betak_test, aes(x=K, y=Beta_k))
 # 
 # # Get P estimates
+# 
 # P_samps <- model_samps$P
 # dim(P_samps)
 # P_samps.mean <- apply(P_samps, c(2,3,4,5), mean)
 # P_samps.mean <- plyr::adply(P_samps.mean, .margins=c(1,2,4))
-# colnames(P_samps.mean) <- c('index_method', 'index_subnat', 'index_year', 'Public', 'Private')
+# colnames(P_samps.mean) <- c('index_subnat', 'index_method', 'index_year', 'Public', 'Private')
 # P_samps.mean <- P_samps.mean %>%
 #   mutate(across(everything(), as.numeric)) %>%
 #   left_join(method_index_table) %>%
@@ -193,25 +161,26 @@ saveRDS(fit, 'results/model_testing_Bspline.RData')
 # dim(P_samps)
 # P_samps.quantile <- apply(P_samps, c(2,3,4,5), quantile, probs=c(0.025, 0.975), na.rm=TRUE)
 # P_samps.quantile <- plyr::adply(P_samps.quantile, .margins=c(2,3,4,5))
-# colnames(P_samps.quantile) <- c('index_method', 'index_subnat','index_sector', 'index_year', 'lower_95', 'upper_95')
+# colnames(P_samps.quantile) <- c('index_subnat', 'index_method', 'index_sector', 'index_year', 'lower_95', 'upper_95')
 # P_samps.quantile <- P_samps.quantile %>%
 #   mutate(across(everything(), as.numeric)) %>%
 #   left_join(method_index_table) %>%
 #   left_join(sector_index_table)
 # 
-# P_samps_df <- left_join(P_samps.mean, P_samps.quantile)
+# P_samps_df <- left_join(P_samps.mean, P_samps.quantile) %>% left_join(year_index_table)
 # 
 # # Get observed data
 # P_df<- P_sim_df_sample %>%
 #   mutate(across(everything(), as.numeric)) %>%
 #   left_join(method_index_table) %>%
-#   pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Observed')
+#   pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Observed') %>%
+#   left_join(year_index_table)
 # 
 # subnatid = 3
 # # Plot means vs observed values
 # ggplot() +
-#   geom_point(data = P_df %>% filter(index_subnat==subnatid), aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +
-#   geom_line(data = P_samps_df %>% filter(index_subnat==subnatid), aes(x=index_year, y=Mean, colour=Sector, lty=Sector)) +
-#   geom_ribbon(data = P_samps_df %>% filter(index_subnat==subnatid), aes(x=index_year, ymin=lower_95, ymax = upper_95, fill=Sector), alpha=0.2) +
+#   geom_point(data = P_df %>% filter(index_subnat==subnatid), aes(x=Year, y=Observed, colour=Sector, pch=Sector)) +
+#   geom_line(data = P_samps_df %>% filter(index_subnat==subnatid), aes(x=Year, y=Mean, colour=Sector, lty=Sector)) +
+#   geom_ribbon(data = P_samps_df %>% filter(index_subnat==subnatid), aes(x=Year, ymin=lower_95, ymax = upper_95, fill=Sector), alpha=0.2) +
 #   facet_wrap(~Method)
 # 

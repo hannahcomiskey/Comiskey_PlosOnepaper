@@ -2,39 +2,12 @@ library(rstan)
 library(tidyverse)
 library(tidybayes)
 
+# Source code --------------------------------------
+source("code/load_functions.R")
+load("data/simulated_data/simulated_data_all_N_kstar_Kenya_new.RData")
 
-bs_bbase_precise <- function(x = x,lastobs = max(x), xl = min(x), xr = max(x), nseg = 10, deg = 3) {
-  # Compute the length of the partitions
-  dx <- (xr - xl) / nseg
-  # Compute position of knot before last observation
-  dk <- lastobs
-  # Create equally spaced knots
-  knots <- seq(xl - deg * dx, xr + deg * dx, by = dx)
-  # Find index of closest knot to dk
-  dk_index <- which.min(abs(knots-dk))
-  # Find transformation to knot placement so that dk is a knot 
-  ktrans <- (dk-knots)[dk_index]
-  # Add transformation to knots
-  knotsnew <- knots + ktrans
-  # Use bs() function to generate the B-spline basis
-  get_bs_matrix <- matrix(splines::bs(x, knots = knotsnew, degree = deg, Boundary.knots = c(knotsnew[1], knotsnew[length(knotsnew)])), nrow = length(x))
-  
-  # Remove columns that contain zero only
-  bs_matrix <- get_bs_matrix[, -c(1:deg, ncol(get_bs_matrix):(ncol(get_bs_matrix) - deg))]
-  
-  used_knots <- knotsnew[-c(1,2,length(knotsnew),(length(knotsnew)-1))]
-  Kstar <- which(used_knots==dk)
-  
-  return(list(B.ik = bs_matrix, ##<< Matrix, each row is one observation, each column is one B-spline.
-              knots.k = used_knots, ##<< Vector of transformed knots.
-              Kstar = Kstar # Knot point of last observation
-  ))
-}
-
-# Source simulated data --------------------------------------
 options(mc.cores = parallel::detectCores())
-
-load("data/simulated_data/simulated_data_MVN_kstar_Kenya_new.RData")
+rstan_options(auto_write = TRUE)
 
 # Get logit of parameters and variance -----------------------------------------
 mydata <- P_sim_df_sample[,c("Public")] %>%
@@ -49,7 +22,7 @@ logit.data <- mydata %>%
          logit.Public.SE = sqrt(logit.Public.Var))
 
 # # testing splines ------------------------------------------------------------
-all_years <- -10:30
+all_years <- -5:25
 B <- bs_bbase_precise(all_years)
 Bik <- B$B.ik
 K <-dim(Bik)[2]
@@ -67,11 +40,9 @@ P_sim_df_sample <- P_sim_df_sample %>%
 simmatchsubnat <- as.vector(as.numeric(P_sim_df_sample$index_subnat))
 simmatchmethod <- as.vector(as.numeric(P_sim_df_sample$index_method))
 simmatchyears <- as.vector(as.numeric(P_sim_df_sample$index_year))
-simmatchcountry <- rep(1, 6)
-
+simmatchcountry <- matchcountry
 n_all_years <- length(all_years)
 M_count = 5
-
 
 Bik_array <- array(NA, dim=c(P,n_all_years,K))
 for(i in 1:P) {
@@ -79,8 +50,12 @@ for(i in 1:P) {
   
 }
 
+# let p0=3, D=H and n=n_obs 
+# See 3.12 Vehtari paper.
+scale_global = 3/((H-3)*sqrt(nrow(logit.data)))
+
 ## The required data ------------------------------
-inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using total proportions as collapsing over sectors
+inputdata <- list(y = as.vector(unlist(logit.data[,c("Public")])), # using total proportions as collapsing over sectors
                   Bik = Bik_array,
                   n_years = n_all_years,
                   n_obs = nrow(logit.data),
@@ -95,31 +70,37 @@ inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   matchsubnat = simmatchsubnat,
                   matchcountry = simmatchcountry,
                   matchmethod = simmatchmethod,
-                  matchyears = simmatchyears)
-
+                  matchyears = simmatchyears,
+                  scale_global=scale_global,
+                  slab_scale = 4,
+                  slab_df = 16
+)
 ## Parameters to look at ------------------------------
 pars <- c("alpha_pms", # required for P
           "delta_k",
           "beta_c",
           "beta_k",
-          "L_Sigma_beta",
-          "L_Sigma_alpha",
           "sigma_delta",
+          "sigma_beta",
+          "sigma_alpha",
+          "lstar_sq",
+          "tau",
+          "cstar",
           "P")
 
 # Run stan model ------------------
 
 fit <- stan(
-  file = "model/STAN/kstar_spline_public_private_logit_MVN_alpha_N_delta.stan",  # Stan program
+  file = "model/STAN/ncp_reg_allN_model.stan",  # Stan program
   data = inputdata,    # named list of data
   pars = pars,
-  iter = 10000,         # total number of iterations per chain
+  iter = 20000,         # total number of iterations per chain
   warmup = 2000,
-  thin=4,
+  thin=9,
   chains=3,
   save_warmup = FALSE,
   control=list(adapt_delta=0.99)
 )
 
 
-saveRDS(fit, file='results/STAN_model_test_kstar_simdata_MVN_alpha_N_delta_KenyaSim_new.RDS')
+saveRDS(fit, file='results/STAN_model_kstar_reg_NCP_allN_simKenya.RDS')

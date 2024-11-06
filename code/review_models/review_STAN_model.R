@@ -4,20 +4,22 @@ library(tidybayes)
 
 # Source code --------------------------------------
 source("code/load_functions.R")
-source("code/read_in_subnational_SEdata.R")
-source("code/set_up_globalrunjags.R")
+source("code/2sector_code/read_in_subnational_2sector_data.R")
+source("code/2sector_code/set_up_2sector_bivar_globalrunjags.R")
 
-# # testing splines ---------------------------------
-B <- splines::bs(all_years, df=10, degree=3, intercept = FALSE)
-K <-dim(B)[2]
-B.ik <- B
-D.hk <- diff(diag(K), diff = 1) # first order difference matrix (h = k-1)
-Q.kh <- t(D.hk)%*%solve(D.hk%*%t(D.hk))
-Zih <- B.ik%*%Q.kh 
-H <- dim(Zih)[2]
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+
+# Get logit of parameters and variance --------------------
+mydata <- FP_source_data_wide[,c("Public", "Public.SE")]
+logit.data <- mydata %>%
+  rowwise() %>%
+  mutate(logit.Public = log(Public/(1-Public)),
+         logit.Public.Var = ((1/(Public*(1-Public)))^2)*Public.SE^2,
+         logit.Public.SE = sqrt(logit.Public.Var))
 
 # Fit model -----------------------------------------
-fit <- readRDS(file='results/global_subnat/STAN_model_zih_deltak_factorcov_obsdata.RDS')
+fit <- readRDS(file='results/STAN_model_kstar_reg_NCP_MVN_alpha_N_delta_Kenya.RDS')
 
 traceplot(fit, pars = c("alpha_pms[3,1]", "alpha_pms[3,2]", "alpha_pms[3,3]", "alpha_pms[3,4]", "alpha_pms[3,5]", "alpha_pms[3,6]"), inc_warmup = FALSE, nrow = 6)
 traceplot(fit, pars = c("L_Sigma[1,1]", "L_Sigma[2,2]", "L_Sigma[3,3]"), inc_warmup = FALSE, nrow = 3)

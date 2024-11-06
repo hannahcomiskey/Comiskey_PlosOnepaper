@@ -3,7 +3,7 @@
 ##############################################
 subnat_FPsource_data <- readRDS("data/subnat_bivar_SE_source_data_20.RDS") # All countries
 
-FP_2030_countries <- c("Kenya" ,"Cameroon") #, 'Benin', 'India')
+FP_2030_countries <- c("Kenya") #, 'Benin', 'India')
 
 subnat_FPsource_data <- subnat_FPsource_data %>% 
   filter(Country %in% FP_2030_countries) %>%

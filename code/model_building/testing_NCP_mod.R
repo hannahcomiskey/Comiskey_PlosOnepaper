@@ -50,9 +50,8 @@ data {
   int<lower=1> M_count; // Number of methods
   int<lower=1> S_count; // Number of sectors
   array[P_count] int<lower=1, upper=K> kstar; // Spline index K star for estimation
-  // vector[K] Bik[P_count, n_years]; // Basis functions
   matrix[n_years, K] Bik; // Basis functions
-  int zero;
+  real zero;
   int matchcountry[P_count]; // country indexing
   int matchmethod[n_obs] ; // method indexing
   int matchyears[n_obs]; // year indexing
@@ -67,16 +66,20 @@ parameters {   // The parameters accepted by the model.
   vector<lower=0>[M_count] sigma_beta; // variance of mean trend
   vector<lower=0>[M_count] sigma_y; // variance of mean trend
   matrix[M_count, P_count] alpha_raw ; // non-centered parameter for hierarchy
-  matrix[C_count, M_count] beta_c ; // expected mean trend
+  matrix[C_count, M_count] beta_c_raw ; // expected mean trend
 }
 
 transformed parameters { 
+  matrix[C_count, M_count] beta_c; // expected mean trend
   matrix[M_count, P_count] alpha_pms; // expected mean trend
   vector[K] beta_k[M_count, P_count]; // spline coefficients
   vector[n_years] z[M_count, P_count]; // latent variable
   matrix[S_count, n_years] P[M_count, P_count]; // logit observation
   
   for(m in 1:M_count){ 
+    for(c in 1:C_count){
+      beta_c[c,m] = sigma_beta[m]*beta_c_raw[c,m];
+    }
     for(p in 1:P_count){
       alpha_pms[m,p] = beta_c[matchcountry[p], m] + sigma_alpha[m]*alpha_raw[m,p];
       // Spline coefficients
@@ -111,7 +114,7 @@ model {
   // Hierarchical estimation of intercept
   for(m in 1:M_count){
     for(c in 1:C_count){   // Country intercepts
-      beta_c[c,m] ~ normal(0, sigma_beta[m]);
+    beta_c_raw[c,m] ~ normal(0, 1);
     } // end C loop
     for(p in 1:P_count){
       alpha_raw[m,p] ~ normal(0,1); // sharing info across methods within a province so each province public/private sector has an intercept.
@@ -178,6 +181,7 @@ inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   K = K,
                   H = H,
                   kstar = rep(kstar, P),
+                  # beta_c = beta_c_new,
                   zero = 0,
                   C_count = C,
                   P_count = P,
@@ -207,165 +211,124 @@ fit <- stan(
   data = inputdata,    # named list of data
   model_code = model,
   pars = pars,
-  iter = 10000,         # total number of iterations per chain
-  warmup = 2000,
-  thin=4,
+  iter = 3500,         # total number of iterations per chain
+  warmup = 500,
+  thin=2,
   chains=3,
   save_warmup = FALSE,
-  control=list(adapt_delta=0.99, max_treedepth=12)
+  control=list(adapt_delta=0.99)
 )
-saveRDS(fit, 'results/ncp_model_testing.RData')
+saveRDS(fit, 'results/ncp_model_testing_Betancp_simKenya.RData')
 
-fit <- readRDS('results/ncp_model_testing.RData')
-
-code <- get_stancode(fit)
-cat(code)
-
-check_n_eff(fit)
-
-check_rhat(fit)
-
-check_divergences(fit)
-
-check_treedepth(fit)
-
-check_energy(fit)
-
-check_div(fit)
-
-shinystan::launch_shinystan(fit)
-
-model_samps <- rstan::extract(fit)
-
-traceplot(fit, pars = c("alpha_pms"), inc_warmup = FALSE, nrow = 6)
-traceplot(fit, pars = c("alpha_raw"), inc_warmup = FALSE, nrow = 6)
-
-traceplot(fit, pars = c("sigma_alpha"), inc_warmup = FALSE, nrow = 5)
-traceplot(fit, pars = c("sigma_delta"), inc_warmup = FALSE, nrow = 5)
-
-
-# Check divergences
-c_dark <- c("#8F272780")
-green <- c("#00FF0080")
-
-partition <- partition_div(fit)
-div_params <- partition[[1]]
-nondiv_params <- partition[[2]]
-
-par(mar = c(4, 4, 0.5, 0.5))
-plot(nondiv_params$`alpha_pms[3,3]`, nondiv_params$`sigma_alpha[3]`,
-     col=c_dark, pch=16, cex=0.8)
-points(div_params$`alpha_pms[3,3]`, div_params$`sigma_alpha[3]`,
-       col=green, pch=16, cex=0.8)
-
-
-par(mar = c(4, 4, 0.5, 0.5))
-plot(nondiv_params$`delta_k[3,3,6]`, log(nondiv_params$`sigma_delta[3]`),
-     col=c_dark, pch=16, cex=0.8)
-points(div_params$`delta_k[3,3,6]`, log(div_params$`sigma_delta[3]`),
-       col=green, pch=16, cex=0.8)
-
-par(mar = c(4, 4, 0.5, 0.5))
-plot(nondiv_params$`alpha_raw[5,6]`, log(nondiv_params$`sigma_alpha[5]`),
-     col=c_dark, pch=16, cex=0.8)
-points(div_params$`alpha_raw[5,6]`, log(div_params$`sigma_alpha[5]`),
-       col=green, pch=16, cex=0.8)
-
-
-# Plot beta spline coefficients
-betak_samps <- model_samps$beta_k
-dim(betak_samps)
-betak_samps.mean <- apply(betak_samps, c(2,3,4), mean)
-dim(betak_samps.mean)
-
-betak_test <- tibble(Beta_k = betak_samps.mean[1,3,], H=1:13)
-
-ggplot() +
-  geom_line(data = betak_test, aes(x=H, y=Beta_k))
-
-random_spline_comp <- Bik %*% betak_samps.mean[2,3,]
-## Plot basis
-par(lwd = 3, cex.axis = 1.3, cex.lab = 1.3, cex.main = 1.3, mfrow = c(1,1))
-plot(all_years,random_spline_comp[,1], type= "n", xaxt="n",
-     xlab = "Year", ylab ="Basis Function",
-     xlim = range(all_years))
-axis(1, at = min(all_years):max(all_years))
-abline(v=knots.k, col = seq(1, H), lwd = 1)
-lines(all_years, random_spline_comp, type= "l", col = k, lwd = 1)
-
-# subnatid = 5
-# # Get Z estimates
-#
-# # From simulation
-# z_tmp <- array(dim=c(M, P, n_years))
-# for(m in 1:M) {
-#   for(p in 1:P) {
-#     for(t in 1:n_years) {
-#       z_tmp[m,p,t] = alpha_sim[m,p] + sum(betak_samps.mean[m,p,]*Bik[t,])
-#     }
-#   }
-# }
-# z_tmp <- plyr::adply(z_tmp, .margins=c(1,2,3))
-# colnames(z_tmp) <- c('index_method', 'index_subnat', 'index_year', 'Z')
-# z_tmp <- z_tmp %>%
+# fit <- readRDS('results/ncp_model_testing_Betancp_simKenya.RData')
+# 
+# code <- get_stancode(fit)
+# cat(code)
+# 
+# check_all_diagnostics(fit)
+# 
+# shinystan::launch_shinystan(fit)
+# 
+# model_samps <- rstan::extract(fit)
+# 
+# traceplot(fit, pars = c("alpha_pms"), inc_warmup = FALSE, nrow = 6)
+# traceplot(fit, pars = c("alpha_raw"), inc_warmup = FALSE, nrow = 6)
+# 
+# traceplot(fit, pars = c("sigma_alpha"), inc_warmup = FALSE, nrow = 5)
+# traceplot(fit, pars = c("sigma_delta"), inc_warmup = FALSE, nrow = 5)
+# 
+# 
+# # Check divergences
+# c_dark <- c("#8F272780")
+# green <- c("#00FF0080")
+# 
+# partition <- partition_div(fit)
+# div_params <- partition[[1]]
+# nondiv_params <- partition[[2]]
+# 
+# par(mar = c(4, 4, 0.5, 0.5))
+# plot(nondiv_params$`alpha_pms[3,3]`, nondiv_params$`sigma_alpha[3]`,
+#      col=c_dark, pch=16, cex=0.8)
+# points(div_params$`alpha_pms[3,3]`, div_params$`sigma_alpha[3]`,
+#        col=green, pch=16, cex=0.8)
+# 
+# 
+# par(mar = c(4, 4, 0.5, 0.5))
+# plot(nondiv_params$`delta_k[3,3,6]`, log(nondiv_params$`sigma_delta[3]`),
+#      col=c_dark, pch=16, cex=0.8)
+# points(div_params$`delta_k[3,3,6]`, log(div_params$`sigma_delta[3]`),
+#        col=green, pch=16, cex=0.8)
+# 
+# par(mar = c(4, 4, 0.5, 0.5))
+# plot(nondiv_params$`alpha_raw[5,6]`, log(nondiv_params$`sigma_alpha[5]`),
+#      col=c_dark, pch=16, cex=0.8)
+# points(div_params$`alpha_raw[5,6]`, log(div_params$`sigma_alpha[5]`),
+#        col=green, pch=16, cex=0.8)
+# 
+# 
+# # Plot beta spline coefficients
+# betak_samps <- model_samps$beta_k
+# dim(betak_samps)
+# betak_samps.mean <- apply(betak_samps, c(2,3,4), mean)
+# dim(betak_samps.mean)
+# 
+# betak_test <- tibble(Beta_k = betak_samps.mean[1,3,], H=1:13)
+# 
+# ggplot() +
+#   geom_line(data = betak_test, aes(x=H, y=Beta_k))
+# 
+# # Get P estimates
+# P_samps <- model_samps$P
+# dim(P_samps)
+# P_samps.mean <- apply(P_samps, c(2,3,4,5), mean)
+# P_samps.mean <- plyr::adply(P_samps.mean, .margins=c(1,2,4))
+# colnames(P_samps.mean) <- c('index_method', 'index_subnat', 'index_year', 'Public', 'Private')
+# P_samps.mean <- P_samps.mean %>%
 #   mutate(across(everything(), as.numeric)) %>%
-#   left_join(method_index_table)
+#   left_join(method_index_table) %>%
+#   pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Mean')
+# 
+# sector_index_table <- tibble(Sector = c('Public', 'Private'), index_sector = 1:2)
+# P_samps <- model_samps$P
+# dim(P_samps)
+# P_samps.quantile <- apply(P_samps, c(2,3,4,5), quantile, probs=c(0.025, 0.975), na.rm=TRUE)
+# P_samps.quantile <- plyr::adply(P_samps.quantile, .margins=c(2,3,4,5))
+# colnames(P_samps.quantile) <- c('index_method', 'index_subnat','index_sector', 'index_year', 'lower_95', 'upper_95')
+# P_samps.quantile <- P_samps.quantile %>%
+#   mutate(across(everything(), as.numeric)) %>%
+#   left_join(method_index_table) %>%
+#   left_join(sector_index_table)
+# 
+# P_samps_df <- left_join(P_samps.mean, P_samps.quantile)
+# 
+# # Get observed data
+# P_df<- P_sim_df_sample %>%
+#   mutate(across(everything(), as.numeric)) %>%
+#   left_join(method_index_table) %>%
+#   pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Observed')
+# 
 # # Plot means vs observed values
 # ggplot() +
-#   geom_line(data = z_tmp %>% filter(index_subnat==5), aes(x=index_year, y=Z)) +
-#   facet_wrap(~Method)
-#
-# # From model
-# Z_samps <- model_samps$z
-# dim(Z_samps)
-# Z_samps.mean <- apply(Z_samps, c(2,3,4), mean)
-# Z_samps.mean <- plyr::adply(Z_samps.mean, .margins=c(1,2,3))
-# colnames(Z_samps.mean) <- c('index_method', 'index_subnat', 'index_year', 'Z')
-# Z_samps.mean <- Z_samps.mean %>%
-#   mutate(across(everything(), as.numeric)) %>%
+#   geom_point(data = P_df, aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +
+#   geom_line(data = P_samps_df, aes(x=index_year, y=Mean, colour=Sector, lty=Sector)) +
+#   geom_ribbon(data = P_samps_df, aes(x=index_year, ymin=lower_95, ymax = upper_95, fill=Sector), alpha=0.2) +
+#   facet_wrap(~interaction(Method, index_subnat), ncol=5)
+# 
+# 
+# alpha_samps <- model_samps$alpha_pms
+# dim(alpha_samps)
+# alpha_mean <- apply(alpha_samps, c(2,3), mean)
+# colnames(alpha_mean) <- 1:P
+# 
+# alpha_mean <- as_tibble(alpha_mean) %>%
+#   mutate(index_method = 1:M) %>%
+#   pivot_longer(cols=`1`:`6`, names_to = 'index_subnat', values_to = 'alpha') %>%
+#   mutate(invlogit.alpha = exp(alpha)/(1+exp(alpha))) %>%
 #   left_join(method_index_table)
-# # Plot means vs observed values
+# 
 # ggplot() +
-#   geom_point(data = Z_samps.mean %>% filter(index_subnat==subnatid), aes(x=index_year, y=Z)) +
-#   geom_line(data = Z_samps.mean %>% filter(index_subnat==subnatid), aes(x=index_year, y=Z)) +
-#   facet_wrap(~Method)
-
-# Get P estimates
-P_samps <- model_samps$P
-dim(P_samps)
-P_samps.mean <- apply(P_samps, c(2,3,4,5), mean)
-P_samps.mean <- plyr::adply(P_samps.mean, .margins=c(1,2,4))
-colnames(P_samps.mean) <- c('index_method', 'index_subnat', 'index_year', 'Public', 'Private')
-P_samps.mean <- P_samps.mean %>%
-  mutate(across(everything(), as.numeric)) %>%
-  left_join(method_index_table) %>%
-  pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Mean')
-
-sector_index_table <- tibble(Sector = c('Public', 'Private'), index_sector = 1:2)
-P_samps <- model_samps$P
-dim(P_samps)
-P_samps.quantile <- apply(P_samps, c(2,3,4,5), quantile, probs=c(0.025, 0.975), na.rm=TRUE)
-P_samps.quantile <- plyr::adply(P_samps.quantile, .margins=c(2,3,4,5))
-colnames(P_samps.quantile) <- c('index_method', 'index_subnat','index_sector', 'index_year', 'lower_95', 'upper_95')
-P_samps.quantile <- P_samps.quantile %>%
-  mutate(across(everything(), as.numeric)) %>%
-  left_join(method_index_table) %>%
-  left_join(sector_index_table)
-
-P_samps_df <- left_join(P_samps.mean, P_samps.quantile)
-
-# Get observed data
-P_df<- P_sim_df_sample %>%
-  mutate(across(everything(), as.numeric)) %>%
-  left_join(method_index_table) %>%
-  pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Observed')
-
-subnatid = 6
-# Plot means vs observed values
-ggplot() +
-  geom_point(data = P_df %>% filter(index_subnat==subnatid), aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +
-  geom_line(data = P_samps_df %>% filter(index_subnat==subnatid), aes(x=index_year, y=Mean, colour=Sector, lty=Sector)) +
-  geom_ribbon(data = P_samps_df %>% filter(index_subnat==subnatid), aes(x=index_year, ymin=lower_95, ymax = upper_95, fill=Sector), alpha=0.2) +
-  facet_wrap(~Method)
-
-
+#   geom_point(data = P_df , aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +
+#   geom_line(data = P_df, aes(x=index_year, y=Observed, colour=Sector, lty=Sector)) +
+#   geom_hline(data=alpha_mean, aes(yintercept = invlogit.alpha)) +
+#   facet_wrap(~interaction(Method, index_subnat), ncol = 5)
+# 

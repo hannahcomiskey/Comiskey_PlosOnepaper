@@ -18,42 +18,35 @@ data {
 }
 
 parameters {   // The parameters accepted by the model. 
-  vector<lower=-9, upper=9>[M_count] alpha_pms[P_count]; // expected mean trend
-  cholesky_factor_corr[M_count] sigmaalpha_Omega; // prior correlation
-  vector<lower=0>[M_count] sigmaalpha_tau;  // prior scale
-  vector<lower=-9, upper=9>[M_count] beta_c[C_count]; // overall country mean trend
-  cholesky_factor_corr[M_count] sigmabeta_Omega; // prior correlation
-  vector<lower=0>[M_count] sigmabeta_tau;  // prior scale
-  vector[H] delta_k[P_count, M_count]; // variation associated with time
+  real alpha_pms[M_count, P_count] ; // expected mean trend
+  vector<lower=0>[M_count] sigma_alpha; // variance of mean trend
   vector<lower=0>[M_count] sigma_delta; // variance of mean trend
+  vector<lower=0>[M_count] sigma_beta; // variance of mean trend
+  vector<lower=0>[M_count] sigma_y; // variance of mean trend
+  vector[M_count] beta_c[C_count]; // overall country mean trend
+  vector[H] delta_k[P_count, M_count]; // variation associated with time
 }
 
 transformed parameters { 
   vector[K] beta_k[M_count, P_count]; // spline coefficients
   vector[n_years] z[M_count, P_count]; // latent variable
-  matrix[S_count, n_years] P[M_count, P_count]; // logit observation
-  cholesky_factor_cov[M_count] L_Sigma_beta; // cholesky variance of country-level mean trend
-  cholesky_factor_cov[M_count] L_Sigma_alpha; // cholesky variance of province-level mean trend
-
-  L_Sigma_beta = diag_pre_multiply(sigmabeta_tau, sigmabeta_Omega);
-  L_Sigma_alpha = diag_pre_multiply(sigmaalpha_tau, sigmaalpha_Omega);
-  
+  matrix<lower=0, upper=1>[S_count, n_years] P[M_count, P_count]; // logit observation
   for(m in 1:M_count){ 
     for(p in 1:P_count){
       
       // Spline coefficients
       beta_k[m,p,kstar[p]] = zero; // set spline coefficient to 0
       for(j in (kstar[p]+1):K) {
-        beta_k[m,p,j] = beta_k[m,p,j-1] + delta_k[p, m, j-1];
+        beta_k[m,p,j] = beta_k[m,p,j-1] + delta_k[p,m, j-1];
       } // after kstar
       for(j in 1:(kstar[p]-1)) { // Estimating spline coefficient here
         int t = kstar[p] - j;
-        beta_k[m,p,t] = beta_k[m,p,t+1] - delta_k[p, m, t];
+        beta_k[m,p,t] = beta_k[m,p,t+1] - delta_k[p,m, t];
       } // before kstar
       
       // Latent variable
       for(t in 1:n_years) {
-        z[m,p,t] = alpha_pms[p,m] + dot_product(Bik[p,t],beta_k[m,p]); // Public sector proprtion on logit scale
+        z[m,p,t] = alpha_pms[m,p] + dot_product(Bik[p,t],beta_k[m,p]); // Public sector proprtion on logit scale
       }
       
       // Proportions
@@ -65,28 +58,27 @@ transformed parameters {
 
 model { 
   // Priors
-  sigmabeta_tau ~ normal(0,2);
-  sigmabeta_Omega ~ lkj_corr_cholesky(1);
-  sigmaalpha_tau ~ normal(0,2);
-  sigmaalpha_Omega ~ lkj_corr_cholesky(1);
+  sigma_beta ~ normal(0,2);
+  sigma_alpha ~ normal(0,2); // cross-country variance (within a method)
   sigma_delta ~ normal(0,2); // cross-country variance (within a method)
- 
+  sigma_y ~ normal(0,2); // cross-country variance (within a method)
+
   // Hierarchical estimation of intercept
-  for(c in 1:C_count){   // Country intercepts
-      beta_c[c] ~ multi_normal_cholesky(rep_vector(0, M_count), L_Sigma_beta);
+  for(m in 1:M_count){
+    for(c in 1:C_count){   // Country intercepts
+      beta_c[c,m] ~ normal(0, sigma_beta[m]);
     } // end C loop
-  for(p in 1:P_count){
-    alpha_pms[p] ~ multi_normal_cholesky(beta_c[matchcountry[p]], L_Sigma_alpha); // sharing info across methods within a province so each province public/private sector has an intercept.
-    for(m in 1:M_count){
+    for(p in 1:P_count){
+      alpha_pms[m,p] ~ normal(beta_c[matchcountry[p], m],sigma_alpha[m]); // sharing info across methods within a province so each province public/private sector has an intercept.
       for(h in 1:H){
         delta_k[p,m,h] ~ normal(0, sigma_delta[m]); // delta are the slopes for logit rates of change in province p, method m, sector s.
       } // end H loop
-    } // end M loop
-  } // end P loop
+    } // end P loop
+  } // end M loop
 
   // Likelihood
   for (k in 1:n_obs) {
-    y[k] ~ normal(z[matchmethod[k],matchsubnat[k], matchyears[k]], 1);
+    y[k] ~ normal(z[matchmethod[k],matchsubnat[k], matchyears[k]], sigma_y[matchmethod[k]]);
   }
 }
 

@@ -11,26 +11,38 @@ data {
   int matchmethod[num_data] ; // method indexing
   int matchyears[num_data]; // year indexing
   int matchsubnat[num_data]; // subnat indexing 
+  real<lower=0> scale_global ; // scale for the half -t prior for tau
+
 }
 
 parameters {
   vector[num_knots] a_raw[P_count, M_count];
+  vector[num_knots] lambda[P_count, M_count]; // allows movement away from 0
+  matrix[P_count, M_count] a0;  // intercept
   vector<lower=0>[M_count] sigma_y; // data variance
   vector<lower=0>[M_count] sigma_a0; // intercept variance
   vector<lower=0>[M_count] tau; // spline variance
-  matrix[P_count, M_count] a0_raw;
+  vector<lower=0>[M_count] tau_lstar; // regulaisation parameter
   vector[M_count] beta_c;
+  vector[M_count] logsigma;
+  real c_sq;
 }
 
 transformed parameters {
   vector[num_knots] a[P_count, M_count];
   vector[num_years] Y_hat[P_count, M_count];
   matrix<lower=0, upper=1>[S_count, num_years] P[P_count, M_count]; // logit observation
-  matrix[P_count, M_count] a0;  // intercept
+  vector[num_knots] lstar_sq[P_count, M_count];
+  vector<lower=0>[M_count] sigma ;  // noise std
+  
+  sigma = exp(logsigma);
   
   for(p in 1:P_count) {
     for(m in 1:M_count) {
-      a0[p,m] = beta_c[m] + sigma_a0[m]*a0_raw[p,m]; // NCP parameterization
+      for(k in 1:num_knots){
+        lstar_sq[p,m,k] = (c_sq*pow(lambda[p,m,k],2))/(c_sq+pow(tau_lstar[m],2)*pow(lambda[p,m,k],2));
+      }
+      
       a[p,m,1] = a_raw[p,m,1];
       for (i in 2:num_knots) {
         a[p,m,i] = a[p,m, i-1] + a_raw[p,m,i]*tau[m]; // penalising splines
@@ -48,12 +60,16 @@ model {
   sigma_y ~ normal(0, 2);
   sigma_a0 ~ normal(0, 1);
   beta_c ~ normal(0, 2);
+  c_sq ~ inv_gamma(2, 8);
   
-  for(p in 1:P_count){
-    //beta_p ~ normal(0, 2);
-    for(m in 1:M_count){
-      a0_raw[p,m] ~ normal(0, 1); // normal(beta_p[p],sigma_a0[p]); // sharing info across methods within a province so each province public/private sector has an intercept.
-      a_raw[p,m] ~ normal(0, 2);
+  for(m in 1:M_count){
+    tau_lstar[m] ~ student_t(3 , 0, scale_global*sigma[m]);
+    for(p in 1:P_count){
+      a0[p,m] ~ normal(beta_c[m],sigma_a0[m]); // sharing info across methods within a province so each province public/private sector has an intercept.
+      lambda[p,m] ~ cauchy(0,1);
+      for(k in 1:num_knots){
+        a_raw[p,m,k] ~ normal(0, tau_lstar[m]*sqrt(lstar_sq[p,m,k])); 
+      }
     }
   }
 
