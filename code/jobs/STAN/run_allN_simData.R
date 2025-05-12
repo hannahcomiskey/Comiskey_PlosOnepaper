@@ -6,7 +6,7 @@ source('code/load_functions.R')
 # Source simulated data --------------------------------------
 options(mc.cores = parallel::detectCores())
 
-load("data/simulated_data/simulated_data_all_N_kstar_Kenya_new.RData")
+load("data/simulated_data/simulated_data_all_N_kstar_Kenya_50years.RData")
 
 # Get logit of parameters and variance -----------------------------------------
 mydata <- P_sim_df_sample[,c("Public")] %>%
@@ -21,7 +21,7 @@ logit.data <- mydata %>%
          logit.Public.SE = sqrt(logit.Public.Var))
 
 # # testing splines ------------------------------------------------------------
-all_years <- -10:30
+all_years <- -5:55
 B <- bs_bbase_precise(all_years)
 Bik <- B$B.ik
 K <-dim(Bik)[2]
@@ -83,13 +83,13 @@ fit <- stan(
   file = "model/STAN/allN_model.stan",  # Stan program
   data = inputdata,    # named list of data
   pars = pars,
-  iter = 10000,         # total number of iterations per chain
-  warmup = 2000,
-  thin=4,
+  iter = 50000,         # total number of iterations per chain
+  warmup = 10000,
+  thin=20,
   chains=3,
   save_warmup = FALSE,
   control=list(adapt_delta=0.99)
 )
 
 
-saveRDS(fit, file='results/STAN_model_allN_KenyaSim.RDS')
+saveRDS(fit, file='results/STAN_model_allN_KenyaSim_50.RDS')

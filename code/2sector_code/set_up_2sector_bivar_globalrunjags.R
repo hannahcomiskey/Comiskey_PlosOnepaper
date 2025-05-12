@@ -35,7 +35,7 @@ all_years <- seq(from = 1990, to = 2023.5, by=0.5) # shorter due to memory issue
 n_all_years <- length(all_years)
 
 FP_source_data_wide <- FP_source_data_wide %>%
-  mutate(index_year = match(average_year,all_years)) 
+  mutate(index_year = match(average_year,all_years))
 
 #################################################
 # setup for JAGS data ---------------------------

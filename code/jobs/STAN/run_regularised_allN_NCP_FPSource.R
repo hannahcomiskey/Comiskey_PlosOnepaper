@@ -22,8 +22,13 @@ logit.data <- mydata %>%
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
+
+# let p0=3, D=H and n=n_obs 
+# See 3.12 Vehtari paper.
+scale_global = 3/((H-3)*sqrt(nrow(logit.data)))
+
 ## The required data ------------------------------
-inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using total proportions as collapsing over sectors
+inputdata <- list(y = as.vector(unlist(logit.data[,c("Public")])), # using total proportions as collapsing over sectors
                   se_prop = as.vector(unlist(logit.data[,c("logit.Public.SE")])),
                   Bik = B.ik,
                   n_years = n_all_years,
@@ -39,31 +44,41 @@ inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   matchsubnat = FP_source_data_wide$index_subnat,
                   matchcountry = index_country_subnat_tbl$index_country,
                   matchmethod = FP_source_data_wide$index_method,
-                  matchyears = FP_source_data_wide$index_year)
+                  matchyears = FP_source_data_wide$index_year,
+                  scale_global=scale_global,
+                  scale_global=scale_global,
+                  slab_scale = 2,
+                  slab_df = 4,
+                  nu_global = 4,
+                  nu_local = 4
+                  )
 
 ## Parameters to look at ------------------------------
 pars <- c("alpha_pms", # required for P
           "delta_k",
           "beta_c",
           "beta_k",
-          "sigma_alpha",
-          "sigma_beta",
           "sigma_delta",
+          "sigma_beta",
+          "sigma_alpha",
+          "lambda_tilde",
+          "tau_delta",
+          "cstar",
           "P")
 
 # Run stan model ------------------
 
 fit <- stan(
-  file = "model/STAN/ncp_allN_model_SE.stan",  # Stan program
+  file = "model/STAN/ncp_reg_allN_model_SE.stan",  # Stan program
   data = inputdata,    # named list of data
   pars = pars,
-  iter = 10000,         # total number of iterations per chain
+  iter = 30000,         # total number of iterations per chain
   warmup = 2000,
-  thin=4,
+  thin=14,
   chains=3,
   save_warmup = FALSE,
   control=list(adapt_delta=0.99)
 )
 
 
-saveRDS(fit, file='results/STAN_model_Kenya_allN_NCP_kstar.stan')
+saveRDS(fit, file='results/STAN_model_kstar_reg_NCP_allN_Kenya.RDS')

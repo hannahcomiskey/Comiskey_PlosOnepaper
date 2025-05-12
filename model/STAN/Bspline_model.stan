@@ -4,7 +4,7 @@ data {
   int num_years;
   vector[num_data] Y;
   vector[num_years] X;
-  matrix[num_knots, num_years] B;
+  matrix[num_years, num_knots] B;
   int M_count;                    // Number of methods
   int P_count;                    // Number of provinces
   int S_count;
@@ -32,10 +32,11 @@ transformed parameters {
     for(m in 1:M_count) {
       a0[p,m] = beta_c[m] + sigma_a0[m]*a0_raw[p,m]; // NCP parameterization
       a[p,m,1] = a_raw[p,m,1];
-      for (i in 2:num_knots) {
+      for (i in 2:(num_knots-1)) {
         a[p,m,i] = a[p,m, i-1] + a_raw[p,m,i]*tau[m]; // penalising splines
       }
-      Y_hat[p,m,1:num_years] = a0[p,m]*to_vector(X) + to_vector(B'*a[p,m, 1:num_knots]);
+      a[p,m,num_knots] = -sum(a[p,m,1:(num_knots-1)]); # hard sum to 0 constraint
+      Y_hat[p,m,1:num_years] = a0[p,m]*to_vector(X) + to_vector(B*a[p,m, 1:num_knots]);
       P[p, m, 1, 1:num_years] = to_row_vector(inv_logit(Y_hat[p,m,1:num_years])) ;
       P[p, m, 2, 1:num_years] = to_row_vector(1 - P[p, m, 1, 1:num_years]) ;
     }
@@ -52,8 +53,8 @@ model {
   for(p in 1:P_count){
     //beta_p ~ normal(0, 2);
     for(m in 1:M_count){
-      a0_raw[p,m] ~ normal(0, 1); // normal(beta_p[p],sigma_a0[p]); // sharing info across methods within a province so each province public/private sector has an intercept.
-      a_raw[p,m] ~ normal(0, 2);
+      a0_raw[p,m] ~ normal(0, 1); 
+      a_raw[p,m] ~ normal(0, 1);
     }
   }
 

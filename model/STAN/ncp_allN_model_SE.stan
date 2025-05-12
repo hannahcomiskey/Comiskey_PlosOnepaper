@@ -21,10 +21,9 @@ data {
 
 parameters {   // The parameters accepted by the model. 
   vector[H] delta_k[P_count, M_count]; // variation associated with time
-  vector<lower=0>[M_count] sigma_delta; // variance of mean trend
+  real<lower=0> sigma_delta; // variance of mean trend
   vector<lower=0>[M_count] sigma_alpha; // variance of mean trend
   vector<lower=0>[M_count] sigma_beta; // variance of mean trend
-  vector<lower=0>[M_count] sigma_y; // variance of mean trend
   matrix[M_count, P_count] alpha_raw ; // non-centered parameter for hierarchy
   matrix[C_count, M_count] beta_c_raw ; // expected mean trend
 }
@@ -66,9 +65,9 @@ transformed parameters {
 
 model { 
   // Priors
-  sigma_delta ~ normal(0,2);
-  sigma_alpha ~ normal(0,2);
-  sigma_beta ~ normal(0,2);
+  sigma_delta ~ cauchy(0,1);
+  sigma_alpha ~ cauchy(0,1);
+  sigma_beta ~ cauchy(0,1);
 
   // Hierarchical estimation of intercept
   for(m in 1:M_count){
@@ -78,7 +77,7 @@ model {
     for(p in 1:P_count){
       alpha_raw[m,p] ~ normal(0,1); // sharing info across methods within a province so each province public/private sector has an intercept.
       for(h in 1:H){
-        delta_k[p,m,h] ~ normal(0, sigma_delta[m]); // delta are the slopes for logit rates of change in province p, method m, sector s.
+        delta_k[p,m,h] ~ normal(0, sigma_delta); // delta are the slopes for logit rates of change in province p, method m, sector s.
       } // end H loop
     } // end P loop
   } // end M loop

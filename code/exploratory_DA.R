@@ -274,9 +274,15 @@ for(i in 1:4) {
   }
 }
 
-
-# Religious identities of countries ------------------
-
+# EDA 
+test <- FP_source_data_wide %>% 
+  ungroup() %>% 
+  select(Country, average_year) %>% 
+  group_by(Country) %>% 
+  filter(average_year==max(average_year)) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  count(average_year)
 
 
 

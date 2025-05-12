@@ -4,7 +4,6 @@ M = 5
 P = 6
 C = 1
 H = 9
-t = 20
 n_method <- c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills" ) # As per the method correlation matrix
 method_index_table <- tibble(Method = n_method, index_method = 1:length(n_method))
 
@@ -105,13 +104,12 @@ bs_bbase_precise <- function(x = x,lastobs = max(x), xl = min(x), xr = max(x), n
   ))
 }
 
-all_years <- 1:20
+all_years <- 1:50 # 1:20
 n_years <- length(all_years)
 B <- bs_bbase_precise(all_years)
 Bik <- B$B.ik
 K <-dim(Bik)[2]
 H = K-1
-sigma_y = 0.5
 kstar = B$Kstar
 
 P_sim <- array(NA, dim=c(M,P,n_years,2))
@@ -125,7 +123,7 @@ var_delta <- readRDS('data/simulated_data/mle_var_delta.RDS')
 for(m in 1:M){
   for(p in 1:P) {
     for(h in 1:H) {
-      delta_sim[m,p,h] <- rnorm(1, mean=0, sd=0.4)
+      delta_sim[m,p,h] <- rnorm(1, mean=0, sd= 0.5)
     }
   }
 }
@@ -173,13 +171,20 @@ P_sim_df <- P_sim_df %>%
   dplyr::mutate(Public = (Public*(nrow(P_sim_df)-1)+0.5)/nrow(P_sim_df)) %>%
   dplyr::select(index_country, index_subnat, index_method, index_year, Public, Private) #, count_NA, remainder)
 
-# samps <- tibble(index_country = rep(1,4),
-#                 index_year = c(4, 8, 12, 15)) %>% 
+# 10 year data
+samps <- tibble(index_country = rep(1,4),
+                index_year = c(4, 8, 12, 15)) %>%
+  mutate(index_country = as.numeric(index_country), index_year = as.numeric(index_year))
+
+# 50 year data
+# samps <- tibble(index_country = rep(1, 25), 
+#                 index_year = seq(1, 50, by=2)) %>% 
 #   mutate(index_country = as.numeric(index_country), index_year = as.numeric(index_year))
 
-samps <- tibble(index_country = rep(1,10),
-                index_year = c(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)) %>% 
-  mutate(index_country = as.numeric(index_country), index_year = as.numeric(index_year))
+# 20 year data
+# samps <- tibble(index_country = rep(1,10),
+#                 index_year = seq(1, 20, by=2)) %>% 
+#   mutate(index_country = as.numeric(index_country), index_year = as.numeric(index_year))
 
 P_sim_df_sample <- left_join(samps, P_sim_df)
 
@@ -193,6 +198,20 @@ P_df<- P_sim_df_sample %>%
 ggplot() +
   geom_point(data = P_df , aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +
   geom_line(data = P_df, aes(x=index_year, y=Observed, colour=Sector, lty=Sector)) +
+  facet_wrap(~interaction(Method, index_subnat), ncol = 5)
+
+plot_alpha <- as_tibble(alpha_sim) %>%
+  mutate(index_method = 1:M) 
+colnames(plot_alpha) <- c(1:P, 'index_method')
+plot_alpha <- plot_alpha %>%
+  pivot_longer(cols=`1`:`6`, names_to = 'index_subnat', values_to = 'alpha') %>%
+  mutate(invlogit.alpha = exp(alpha)/(1+exp(alpha))) %>%
+  left_join(method_index_table)
+
+ggplot() +
+  geom_point(data = P_df , aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +
+  geom_line(data = P_df, aes(x=index_year, y=Observed, colour=Sector, lty=Sector)) +
+  geom_hline(data=plot_alpha, aes(yintercept = invlogit.alpha)) +
   facet_wrap(~interaction(Method, index_subnat), ncol = 5)
 
 # ZIH splines ------------------------------------------------------------------

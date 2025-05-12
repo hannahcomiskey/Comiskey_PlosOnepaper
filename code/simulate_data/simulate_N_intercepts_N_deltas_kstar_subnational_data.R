@@ -5,7 +5,6 @@ library(tidyverse)
 M = 5
 P = 6
 C = 1
-n_years = 20
 n_method <- c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills" ) # As per the method correlation matrix
 method_index_table <- tibble(Method = n_method, index_method = 1:length(n_method))
 index_sector_table <- tibble(Sector = c('Public', 'Private'), index_sector = 1:2)
@@ -39,8 +38,8 @@ for(m in 1:M) {
   }
 }
 
-all_years = 1:20
-
+all_years = 1:10 #1:50 #1:20
+n_years = length(all_years)
 # # testing splines ---------------------------------
 
 bs_bbase_precise <- function(x = x,lastobs = max(x), xl = min(x), xr = max(x), nseg = 10, deg = 3) {
@@ -140,8 +139,12 @@ P_sim_df <- P_sim_df %>%
   dplyr::mutate(Public = (Public*(nrow(P_sim_df)-1)+0.5)/nrow(P_sim_df)) %>%
   dplyr::select(index_country, index_subnat, index_method, index_year, Public, Private) #, count_NA, remainder)
 
-samps <- tibble(index_country = rep(1,10),
-                index_year = c(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)) %>% 
+# samps <- tibble(index_country = rep(1,25),
+#                 index_year = seq(1,50, by=2)) %>% 
+#   mutate(index_country = as.numeric(index_country), index_year = as.numeric(index_year))
+
+samps <- tibble(index_country = rep(1,5),
+                index_year = seq(1,10, by=2)) %>% 
   mutate(index_country = as.numeric(index_country), index_year = as.numeric(index_year))
 
 
@@ -152,10 +155,6 @@ P_df<- P_sim_df_sample %>%
   mutate(across(everything(), as.numeric)) %>%
   left_join(method_index_table) %>%
   pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Observed')
-
-# Plot means vs observed values
-alpha_temp <- tibble(alpha = alpha_sim[,indexid], index_method = 1:5, Method = n_method) %>%
-  mutate(invlogit.alpha = exp(alpha)/(1+exp(alpha)))
 
 ggplot() +
   geom_point(data = P_df , aes(x=index_year, y=Observed, colour=Sector, pch=Sector)) +

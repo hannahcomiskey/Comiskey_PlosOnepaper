@@ -1,12 +1,13 @@
 library(rstan)
 library(tidyverse)
 library(tidybayes)
-source('code/load_functions.R')
 
-# Source simulated data --------------------------------------
+# Source code --------------------------------------
+source("code/load_functions.R")
+load("data/simulated_data/simulated_data_all_N_kstar_Kenya_50years.RData")
+
 options(mc.cores = parallel::detectCores())
-
-load("data/simulated_data/simulated_data_all_N_kstar_Kenya_new.RData")
+rstan_options(auto_write = TRUE)
 
 # Get logit of parameters and variance -----------------------------------------
 mydata <- P_sim_df_sample[,c("Public")] %>%
@@ -16,10 +17,12 @@ mydata <- P_sim_df_sample[,c("Public")] %>%
 
 logit.data <- mydata %>%
   rowwise() %>%
-  mutate(logit.Public = log(Public/(1-Public)))
+  mutate(logit.Public = log(Public/(1-Public)),
+         logit.Public.Var = ((1/(Public*(1-Public)))^2)*Public.SE^2,
+         logit.Public.SE = sqrt(logit.Public.Var))
 
 # # testing splines ------------------------------------------------------------
-all_years <- -10:30
+all_years <- -5:55
 B <- bs_bbase_precise(all_years)
 Bik <- B$B.ik
 K <-dim(Bik)[2]
@@ -47,8 +50,12 @@ for(i in 1:P) {
   
 }
 
+# let p0=3, D=H and n=n_obs 
+# See 3.12 Vehtari paper.
+scale_global = 3/((H-3)*sqrt(nrow(logit.data)))
+
 ## The required data ------------------------------
-inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using total proportions as collapsing over sectors
+inputdata <- list(y = as.vector(unlist(logit.data[,c("Public")])), # using total proportions as collapsing over sectors
                   Bik = Bik_array,
                   n_years = n_all_years,
                   n_obs = nrow(logit.data),
@@ -63,31 +70,39 @@ inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   matchsubnat = simmatchsubnat,
                   matchcountry = simmatchcountry,
                   matchmethod = simmatchmethod,
-                  matchyears = simmatchyears)
-
+                  matchyears = simmatchyears,
+                  scale_global=scale_global,
+                  slab_scale = 2,
+                  slab_df = 4,
+                  nu_global = 4,
+                  nu_local = 4
+)
 ## Parameters to look at ------------------------------
 pars <- c("alpha_pms", # required for P
           "delta_k",
           "beta_c",
           "beta_k",
-          "sigma_alpha",
-          "sigma_beta",
           "sigma_delta",
+          "sigma_beta",
+          "sigma_alpha",
+          "lambda_tilde",
+          "tau_delta",
+          "cstar",
+          "sigma_tau",
           "P")
 
 # Run stan model ------------------
 
 fit <- stan(
-  file = "model/STAN/ncp_allN_model.stan",  # Stan program
+  file = "model/STAN/ncp_reg_allN_model.stan",  # Stan program
   data = inputdata,    # named list of data
   pars = pars,
-  iter = 10000,         # total number of iterations per chain
-  warmup = 2000,
-  thin=4,
+  iter = 80000,         # total number of iterations per chain
+  warmup = 10000,
+  thin=35,
   chains=3,
   save_warmup = FALSE,
   control=list(adapt_delta=0.99)
 )
 
-
-saveRDS(fit, file='results/STAN_model_allN_NCP_kstar_KenyaSim.stan')
+saveRDS(fit, file='results/STAN_model_kstar_reg_NCP_allN_sum0_simKenya_50.RDS')

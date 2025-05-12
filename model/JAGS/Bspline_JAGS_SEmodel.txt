@@ -1,0 +1,41 @@
+model{
+  for(m in 1:M_count){
+    for(p in 1:P_count){
+      a0[p,m] = beta_c[m,matchcountry[p]] + sigma_a0[m]*a0_raw[p,m] 
+      a[p,m,1] = a_raw[p,m,1]
+      for (i in 2:(num_knots-1)) {
+        a[p,m,i] = a[p,m, i-1] + sigma_a[m]*a_raw[p,m,i] # penalising splines
+      }
+      a[p,m,num_knots] = -sum(a[p,m,1:(num_knots-1)]) # hard sum to 0 constraint
+      for(t in 1:num_years) {
+        Y_hat[p,m,t] = a0[p,m] + inprod(B[t,1:num_knots], a[p,m, 1:num_knots])
+        P[p, m, 1, t] = exp(Y_hat[p,m,t])/(1+exp(Y_hat[p,m,t]))
+        P[p, m, 2, t] = 1 - P[p, m, 1, t] 
+      }
+    }
+  }
+
+  # Priors
+  for(m in 1:M_count){
+    sigma_a[m] ~ dnorm(0, (1/2)^2)T(0,)
+    sigma_a0[m] ~ dnorm(0, (1/2)^2)T(0,)
+    sigma_beta[m] ~ dt(0,1,1)T(0,)
+    tau_beta[m] <- 1/sigma_beta[m]
+    for(c in 1:C_count){
+      beta_c[m,c] ~ dnorm(0, tau_beta[m]^2)
+    }
+    for(p in 1:P_count){
+      a0_raw[p,m] ~ dnorm(0,1)
+      for(k in 1:num_knots) {
+        a_raw[p,m,k] ~ dnorm(0,1)
+      }
+    }
+  }
+
+  # Likelihood
+  for (k in 1:num_data) {
+    Y[k] ~ dnorm(Y_hat[matchsubnat[k], matchmethod[k], matchyears[k]],  tau_y[k]) # Logit Normal data model
+    tau_y[k] <- 1/(se_prop[k]^2) 
+    Y_sim[k] ~ dnorm(Y_hat[matchsubnat[k], matchmethod[k], matchyears[k]], tau_y[k])
+  }
+}

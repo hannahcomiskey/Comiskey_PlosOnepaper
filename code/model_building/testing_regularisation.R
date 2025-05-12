@@ -4,40 +4,13 @@ library(tidyverse)
 library(tidybayes)
 library(bayesplot)
 source('code/stan_utility.R')
-
-bs_bbase_precise <- function(x = x,lastobs = max(x), xl = min(x), xr = max(x), nseg = 10, deg = 3) {
-  # Compute the length of the partitions
-  dx <- (xr - xl) / nseg
-  # Compute position of knot before last observation
-  dk <- lastobs
-  # Create equally spaced knots
-  knots <- seq(xl - deg * dx, xr + deg * dx, by = dx)
-  # Find index of closest knot to dk
-  dk_index <- which.min(abs(knots-dk))
-  # Find transformation to knot placement so that dk is a knot 
-  ktrans <- (dk-knots)[dk_index]
-  # Add transformation to knots
-  knotsnew <- knots + ktrans
-  # Use bs() function to generate the B-spline basis
-  get_bs_matrix <- matrix(splines::bs(x, knots = knotsnew, degree = deg, Boundary.knots = c(knotsnew[1], knotsnew[length(knotsnew)])), nrow = length(x))
-  
-  # Remove columns that contain zero only
-  bs_matrix <- get_bs_matrix[, -c(1:deg, ncol(get_bs_matrix):(ncol(get_bs_matrix) - deg))]
-  
-  used_knots <- knotsnew[-c(1,2,length(knotsnew),(length(knotsnew)-1))]
-  Kstar <- which(used_knots==dk)
-  
-  return(list(B.ik = bs_matrix, ##<< Matrix, each row is one observation, each column is one B-spline.
-              knots.k = used_knots, ##<< Vector of transformed knots.
-              Kstar = Kstar # Knot point of last observation
-  ))
-}
+source('code/load_functions.R')
 
 # Source simulated data --------------------------------------
 options(mc.cores = parallel::detectCores())
 rstan_options(threads_per_chain = 1, auto_write = TRUE)
 
-load("data/simulated_data/simulated_data_all_N_kstar_Kenya_new.RData")
+load("data/simulated_data/simulated_data_all_N_kstar_Kenya_50years.RData")
 
 model <- "
 data {  
@@ -50,43 +23,53 @@ data {
   int<lower=1> M_count; // Number of methods
   int<lower=1> S_count; // Number of sectors
   array[P_count] int<lower=1, upper=K> kstar; // Spline index K star for estimation
-  matrix[n_years, K] Bik; // Basis functions
-  int zero;
+  vector[K] Bik[P_count, n_years]; // Basis functions
+  real zero;
   int matchcountry[P_count]; // country indexing
   int matchmethod[n_obs] ; // method indexing
   int matchyears[n_obs]; // year indexing
   int matchsubnat[n_obs]; // subnat indexing 
   vector[n_obs] y; // proportions
-  real<lower=0> scale_global ; // scale for the half -t prior for tau
+  real<lower=1> nu_global ; // degrees of freedom for the half-t prior for tau
+  real<lower=1> nu_local ; // degrees of freedom for the half-t priors for lambdas
+  real<lower=0> scale_global ; // scale for the half-t prior for tau
+  real<lower=0> slab_scale ; # slab scale for the regularized horseshoe
+  real<lower=0> slab_df ; # slab degrees of freedom for the regularized horseshoe
+  matrix[C_count, M_count] beta_c; // expected mean trend
   }
 
-parameters {   // The parameters accepted by the model. 
+parameters {   // The parameters accepted by the model.
   vector[H] delta_k[P_count, M_count]; // variation associated with time
   vector<lower=0>[M_count] sigma_delta; // variance of mean trend
   vector<lower=0>[M_count] sigma_alpha; // variance of mean trend
-  vector<lower=0>[M_count] sigma_beta; // variance of mean trend
-  real alpha_pms[M_count, P_count] ; // expected mean trend
-  matrix[C_count, M_count] beta_c ; // expected mean trend
-  real<lower=0> tau; 
-  real c_sq;
-  vector<lower=0>[H] lambda[P_count, M_count];
+  vector<lower=0>[M_count] sigma_y;
+  vector[M_count] alpha_raw[P_count]; // non-centered parameter for hierarchy
+  real<lower=0> caux;
   real logsigma;
+  real<lower=0> aux1_global;
+  real<lower=0> aux2_global;
+  vector<lower=0>[H] aux1_local[P_count, M_count];
+  vector<lower=0>[H] aux2_local[P_count, M_count];
 }
 
 transformed parameters { 
+  vector[M_count] alpha_pms[P_count]; // expected mean trend
   vector[K] beta_k[M_count, P_count]; // spline coefficients
   vector[n_years] z[M_count, P_count]; // latent variable
   matrix[S_count, n_years] P[M_count, P_count]; // logit observation
-  vector[H] lstar_sq[P_count, M_count];
-  real <lower=0> sigma ;  // noise std
-  
-  sigma = exp(logsigma);
+  vector<lower=0>[H] lambda_tilde[P_count, M_count]; // 'truncated' local shrinkage parameter
+  vector<lower=0>[H] lambda[P_count, M_count]; // local shrinkage parameter
+  real<lower=0> sigma_tau;  // noise std
+  real<lower=0> cstar; # slab scale
+  real<lower=0> tau_delta; // global shrinkage parameter
+
+  sigma_tau = exp(logsigma);
+  tau_delta = aux1_global*sqrt(aux2_global)*scale_global*sigma_tau;
+  cstar = slab_scale*sqrt(caux);
   
   for(m in 1:M_count){ 
     for(p in 1:P_count){
-      for(h in 1:H){
-        lstar_sq[p,m,h] = (c_sq*pow(lambda[p,m,h],2))/(c_sq+pow(tau,2)*pow(lambda[p,m,h],2));
-      }
+      alpha_pms[p,m] = beta_c[matchcountry[p], m] + sigma_alpha[m]*alpha_raw[p,m];
       // Spline coefficients
       beta_k[m,p,kstar[p]] = zero; // set spline coefficient to 0
       for(j in (kstar[p]+1):K) {
@@ -96,10 +79,12 @@ transformed parameters {
         int t = kstar[p] - j;
         beta_k[m,p,t] = beta_k[m,p,t+1] - delta_k[p,m, t];
       } // before kstar
-      
+      lambda[p,m] = aux1_local[p,m].*sqrt(aux2_local[p,m]);
+      lambda_tilde[p,m]  = sqrt((pow(cstar,2)*pow(lambda[p,m],2)) ./ (pow(cstar,2) + pow(sigma_tau,2)*pow(lambda[p,m], 2)));
+
       // Latent variable
       for(t in 1:n_years) {
-        z[m,p,t] = alpha_pms[m,p] +  dot_product(Bik[t, 1:K],beta_k[m,p]); // Public sector proprtion on logit scale
+        z[m,p,t] = alpha_pms[p,m] +  dot_product(Bik[p, t, 1:K],beta_k[m,p]); // Public sector proprtion on logit scale
       }
       
       // Proportions
@@ -111,48 +96,53 @@ transformed parameters {
 
 model { 
   // Priors
-  sigma_delta ~ normal(0,2);
-  sigma_alpha ~ normal(0,2);
-  sigma_beta ~ normal(0,2);
-  c_sq ~ inv_gamma(2, 8);
-  tau ~ student_t(3 , 0, scale_global*sigma);
+  sigma_delta ~ normal(0, 2);
+  sigma_alpha ~ normal(0, 2);
+  caux ~ inv_gamma(0.5*slab_df, 0.5*slab_df);
+  logsigma ~ normal(0, 2);
+  aux1_global ~ normal(0, 1);
+  aux2_global ~ inv_gamma(0.5*nu_global, 0.5*nu_global);
+  sigma_y ~ normal(0, 2);
   
   // Hierarchical estimation of intercept
-  for(m in 1:M_count){
-    for(c in 1:C_count){   // Country intercepts
-      beta_c[c,m] ~ normal(0, sigma_beta[m]);
-    } // end C loop
-    for(p in 1:P_count){
-      alpha_pms[m,p] ~ normal(beta_c[matchcountry[p], m],sigma_alpha[m]); // sharing info across methods within a province so each province public/private sector has an intercept.
-      for(h in 1:H){
-        lambda[p,m,h] ~ cauchy(0,1);
-        delta_k[p,m,h] ~ normal(0, pow(tau,2)*lstar_sq[p,m,h]); // delta are the slopes for logit rates of change in province p, method m, sector s.
-      } // end H loop
-    } // end P loop
-  } // end M loop
+  for(p in 1:P_count){
+    alpha_raw[p] ~ normal(0, 1); // sharing info across methods within a province so each province public/private sector has an intercept.
+  } // end P loop
+  
+  for(m in 1:M_count) {
+    for(p in 1:P_count){  
+      // Sum-to-0 constraint on spline coefficients 
+      sum(beta_k[m,p]) ~ normal(alpha_pms[p,m], inv_sqrt(1 - inv(K)));
+      for(h in 1:H) {
+        delta_k[p,m,h] ~ normal(0, tau_delta*lambda_tilde[p,m,h]);
+      }
+      aux1_local[p,m] ~ normal(0, 1);
+      aux2_local[p,m] ~ inv_gamma(0.5*nu_local, 0.5*nu_local);
+    }
+  }
+
 
   // Likelihood
   for (k in 1:n_obs) {
-    y[k] ~ normal(z[matchmethod[k],matchsubnat[k], matchyears[k]], 1);
+    y[k] ~ normal(z[matchmethod[k],matchsubnat[k], matchyears[k]], sigma_y[matchmethod[k]]);
   }
 }
 
 "
 
 # Get logit of parameters and variance -----------------------------------------
-mydata <- P_sim_df_sample[,c("Public")] %>%
-  mutate(Public.SE = 0.1) %>%
+small_samp <- P_sim_df_sample %>% filter(index_subnat==1)
+
+mydata <- small_samp[,c("Public")] %>%
   rowwise() %>%
   mutate(Public = ifelse(Public < 0.0001 , 0, Public))
 
 logit.data <- mydata %>%
   rowwise() %>%
-  mutate(logit.Public = log(Public/(1-Public)),
-         logit.Public.Var = ((1/(Public*(1-Public)))^2)*Public.SE^2,
-         logit.Public.SE = sqrt(logit.Public.Var))
+  mutate(logit.Public = log(Public/(1-Public)))
 
 # # testing splines ------------------------------------------------------------
-all_years <- -5:25
+all_years <- -5:55
 B <- bs_bbase_precise(all_years)
 Bik <- B$B.ik
 K <-dim(Bik)[2]
@@ -161,18 +151,19 @@ kstar = B$Kstar
 
 year_index_table <- tibble(Year = all_years, index_year = 1:length(all_years))
 
-P_sim_df_sample <- P_sim_df_sample %>% 
+small_samp <- small_samp %>% 
   rename(Year = index_year) %>%
   mutate_if(is.character, as.numeric) %>%
   left_join(year_index_table)
 
 # Set up model inputs ----------------------------------------------------------
-simmatchsubnat <- as.vector(as.numeric(P_sim_df_sample$index_subnat))
-simmatchmethod <- as.vector(as.numeric(P_sim_df_sample$index_method))
-simmatchyears <- as.vector(as.numeric(P_sim_df_sample$index_year))
-simmatchcountry <- matchcountry
+simmatchsubnat <- as.vector(as.numeric(small_samp$index_subnat))
+simmatchmethod <- as.vector(as.numeric(small_samp$index_method))
+simmatchyears <- as.vector(as.numeric(small_samp$index_year))
+simmatchcountry <- rep(1, P)
 n_all_years <- length(all_years)
 M_count = 5
+P = unique(small_samp$index_subnat)
 
 Bik_array <- array(NA, dim=c(P,n_all_years,K))
 for(i in 1:P) {
@@ -186,12 +177,12 @@ scale_global = 3/((H-3)*sqrt(nrow(logit.data)))
   
 ## The required data ------------------------------
 inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using total proportions as collapsing over sectors
-                  Bik = Bik,
+                  Bik = Bik_array,
                   n_years = n_all_years,
                   n_obs = nrow(logit.data),
                   K = K,
                   H = H,
-                  kstar = rep(kstar, P),
+                  kstar= array(kstar, dim=c(P)),
                   zero = 0,
                   C_count = C,
                   P_count = P,
@@ -201,21 +192,22 @@ inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   matchcountry = simmatchcountry,
                   matchmethod = simmatchmethod,
                   matchyears = simmatchyears,
-                  scale_global=scale_global
+                  scale_global=scale_global,
+                  beta_c = matrix(beta_c_new, nrow=1, ncol=5)
                   )
 
 ## Parameters to look at ------------------------------
-pars <- c("delta_k",
-          "sigma_delta",
-          "sigma_alpha",
-          "sigma_beta",
+pars <- c("alpha_pms", # required for P
+          "delta_k",
           "beta_k",
-          "alpha_pms",
-          "beta_c",
-          "P",
-          "tau",
-          "lambda",
-          "c_sq")
+          "sigma_delta",
+          "sigma_beta",
+          "sigma_alpha",
+          "lambda_tilde",
+          "tau_delta",
+          "cstar",
+          "sigma_tau",
+          "P")
 
 # Run stan model ------------------
 
@@ -228,9 +220,9 @@ fit <- stan(
   thin=4,
   chains=3,
   save_warmup = FALSE,
-  control=list(adapt_delta=0.99, max_treedepth=12)
+  control=list(adapt_delta=0.99)
 )
-saveRDS(fit, 'results/regularisation_model_testing_2.RData')
+saveRDS(fit, 'results/regularisation_model_testing_smallsamp.RData')
 
 # fit <- readRDS( 'results/regularisation_model_testing.RData')
 # code <- get_stancode(fit)

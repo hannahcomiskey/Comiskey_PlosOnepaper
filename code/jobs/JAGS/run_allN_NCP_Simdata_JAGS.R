@@ -1,13 +1,12 @@
-library(rstan)
+library(rjags)
+library(R2jags)
 library(tidyverse)
 library(tidybayes)
+library(parallel)
+source('code/load_functions.R')
 
-# Source code --------------------------------------
-source("code/load_functions.R")
-load("data/simulated_data/simulated_data_all_N_kstar_Kenya_new.RData")
-
-options(mc.cores = parallel::detectCores())
-rstan_options(auto_write = TRUE)
+# Source simulated data --------------------------------------
+load("data/simulated_data/simulated_data_all_N_kstar_Kenya_50years.RData")
 
 # Get logit of parameters and variance -----------------------------------------
 mydata <- P_sim_df_sample[,c("Public")] %>%
@@ -17,12 +16,10 @@ mydata <- P_sim_df_sample[,c("Public")] %>%
 
 logit.data <- mydata %>%
   rowwise() %>%
-  mutate(logit.Public = log(Public/(1-Public)),
-         logit.Public.Var = ((1/(Public*(1-Public)))^2)*Public.SE^2,
-         logit.Public.SE = sqrt(logit.Public.Var))
+  mutate(logit.Public = log(Public/(1-Public)))
 
 # # testing splines ------------------------------------------------------------
-all_years <- -5:25
+all_years <-  -5:55 # -5:20 #
 B <- bs_bbase_precise(all_years)
 Bik <- B$B.ik
 K <-dim(Bik)[2]
@@ -50,57 +47,43 @@ for(i in 1:P) {
   
 }
 
-# let p0=3, D=H and n=n_obs 
-# See 3.12 Vehtari paper.
-scale_global = 3/((H-3)*sqrt(nrow(logit.data)))
-
 ## The required data ------------------------------
-inputdata <- list(y = as.vector(unlist(logit.data[,c("Public")])), # using total proportions as collapsing over sectors
+inputdata <- list(y = as.vector(unlist(logit.data[,c("Public")])),  #as.vector(unlist(logit.data[,c("logit.Public")])), # using total proportions as collapsing over sectors
                   Bik = Bik_array,
                   n_years = n_all_years,
                   n_obs = nrow(logit.data),
                   K = K,
                   H = H,
                   kstar = rep(kstar, P),
-                  zero = 0,
                   C_count = C,
                   P_count = P,
                   M_count = M,
-                  S_count = 2,
                   matchsubnat = simmatchsubnat,
                   matchcountry = simmatchcountry,
                   matchmethod = simmatchmethod,
-                  matchyears = simmatchyears,
-                  scale_global=scale_global,
-                  slab_scale = 4,
-                  slab_df = 16
-)
+                  matchyears = simmatchyears)
+
 ## Parameters to look at ------------------------------
 pars <- c("alpha_pms", # required for P
-          "delta_k",
-          "beta_c",
-          "beta_k",
+          "delta.k",
+          "alpha_cms",
+          "beta.k",
+          "phi",
+          "sigma_alpha_pms",
+          "sigma_alpha_cms",
           "sigma_delta",
-          "sigma_beta",
-          "sigma_alpha",
-          "lstar_sq",
-          "tau",
-          "cstar",
-          "P")
-
-# Run stan model ------------------
-
-fit <- stan(
-  file = "model/STAN/ncp_reg_allN_model.stan",  # Stan program
-  data = inputdata,    # named list of data
-  pars = pars,
-  iter = 20000,         # total number of iterations per chain
-  warmup = 2000,
-  thin=9,
-  chains=3,
-  save_warmup = FALSE,
-  control=list(adapt_delta=0.99)
-)
+          "P",
+          "y.sim")
 
 
-saveRDS(fit, file='results/STAN_model_kstar_reg_NCP_allN_simKenya.RDS')
+# ## Run the model ---------------------
+mod <- jags(data=inputdata,
+                     parameters.to.save=pars,
+                     model.file = "model/JAGS/ncp_allN_beta_SEmodel_JAGS.txt",
+                     n.iter = 60000,         # total number of iterations per chain
+                     n.burnin = 10000,
+                     n.thin=25)
+
+saveRDS(mod, file='results/JAGS_model_KenyaSim_allN_NCP_kstar_sum0_50years_beta.RDS')
+
+
