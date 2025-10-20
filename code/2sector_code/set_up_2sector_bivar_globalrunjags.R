@@ -116,3 +116,4 @@ for (k in 1:K){
   lines(all_years,res$B.ik[,k], type= "l", col = k, lwd = 1)
 }
 
+
