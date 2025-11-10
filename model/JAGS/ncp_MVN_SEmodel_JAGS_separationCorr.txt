@@ -42,22 +42,53 @@ model{
     y[k] ~ dnorm(z[matchmethod[k],matchsubnat[k],matchyears[k]],  tau_y[k]) # Logit Normal data model
     y.sim[k] ~ dnorm(z[matchmethod[k],matchsubnat[k],matchyears[k]],  tau_y[k]) 
     tau_y[k] <- 1/(se_prop[k]^2) 
-  }
+    }
     
 ## Priors
-  # Inverse-Wishart prior for country-level params
-  inv.Sigma.alpha_cms[1:M_count,1:M_count] ~ dwish(Omega[1:M_count,1:M_count], M_count+5)
+  # Cholesky factor L (lower triangular) param
+  for (i in 1:M_count) {
+    # prior for log of positive diagonal entries (controls scale)
+    logL_cms[i] ~ dnorm(0, 10^-2)   # wide prior on log-scale country-level
+    L_cms[i,i] <- exp(logL_cms[i])
+    logL_pms[i] ~ dnorm(0, 10^-2) # province level
+    L_pms[i,i] <- exp(logL_pms[i])
+    for (j in 1:(i-1)) {
+      L_cms[i,j] ~ dnorm(0, 10^-1) # prior for lower-triangle off-diagonals country-level
+      L_pms[i,j] ~ dnorm(0, 10^-1) # prior for lower-triangle off-diagonals province-level
+    }
+    for (j in (i+1):M_count) {
+      L_cms[i,j] <- 0
+      L_pms[i,j] <- 0
+    }
+  }
+  
+  # build Sigma = L %*% t(L)
+  for (i in 1:M_count) {
+    for (j in 1:M_count) {
+      # numerical stability
+      Sigma.alpha_cms[i,j] <- ifelse(
+        i==j,
+        sum(L_cms[i,1:M_count] * L_cms[j,1:M_count]) + 1e-8,
+        sum(L_cms[i,1:M_count] * L_cms[j,1:M_count])
+      )
+      
+      Sigma.alpha_pms[i,j] <- ifelse(
+        i==j,
+        sum(L_pms[i,1:M_count] * L_pms[j,1:M_count]) + 1e-8,
+        sum(L_pms[i,1:M_count] * L_pms[j,1:M_count])
+      )
+    }
+  }
 
-  # Inverse-Wishart prior for province-level params
-  inv.Sigma.alpha_pms[1:M_count,1:M_count] ~ dwish(Omega[1:M_count,1:M_count], M_count+5)
 
-  sigma_delta ~ dnorm(0, 2^-2)T(0,) 
+  sigma_delta ~ dnorm(0, 2^-2)T(0,)  
   tau_delta <- sigma_delta^-2
+  
   for(c in 1:C_count) { # country loop
-    err_alpha_cms[1:M_count,c] ~ dmnorm(rep(0,M_count), inv.Sigma.alpha_cms[1:M_count,1:M_count])
+    err_alpha_cms[1:M_count,c] ~ dmnorm.vcov(rep(0,M_count), Sigma.alpha_cms[1:M_count,1:M_count])
     alpha_cms[1:M_count,c] <- rep(0,M_count) + err_alpha_cms[1:M_count,c]
   }
   for(p in 1:P_count) { # province loop
-    err_alpha_pms[1:M_count,p] ~ dmnorm(rep(0,M_count), inv.Sigma.alpha_pms[1:M_count,1:M_count])
+    err_alpha_pms[1:M_count,p] ~ dmnorm.vcov(rep(0,M_count), Sigma.alpha_pms[1:M_count,1:M_count])
   }
 }

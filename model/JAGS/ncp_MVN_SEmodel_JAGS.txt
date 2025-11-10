@@ -46,10 +46,10 @@ model{
     
 ## Priors
   # Inverse-Wishart prior for country-level params
-  inv.Sigma.alpha_cms[1:M_count,1:M_count] ~ dwish(Omega[1:M_count,1:M_count], M_count+1)
+  inv.Sigma.alpha_cms[1:M_count,1:M_count] ~ dwish(Omega[1:M_count,1:M_count], M_count+5)
 
   # Inverse-Wishart prior for province-level params
-  inv.Sigma.alpha_pms[1:M_count,1:M_count] ~ dwish(Omega[1:M_count,1:M_count], M_count+1)
+  inv.Sigma.alpha_pms[1:M_count,1:M_count] ~ dwish(Omega[1:M_count,1:M_count], M_count+5)
 
   for(m in 1:M_count){ # method loop
     sigma_delta[m] ~ dt(0,1,1)T(0,) 
