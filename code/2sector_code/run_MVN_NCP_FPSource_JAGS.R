@@ -31,9 +31,7 @@ inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   C_count = length(n_country),
                   P_count = length(n_subnat),
                   M_count = length(n_method),
-                  # N_admin = 3,
-                  # matchadmin = c(1, 1, 2, 2, 3),
-                  Omega = (M+1)*diag(M),
+                  Omega = diag(M),
                   matchcountry= index_country_subnat_tbl$index_country,
                   matchsubnat = FP_source_data_wide$index_subnat,
                   matchmethod = FP_source_data_wide$index_method,
@@ -41,12 +39,14 @@ inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
 
 ## Parameters to look at ------------------------------
 pars <- c("alpha_pms", # required for P
-          "delta.k",
           "alpha_cms",
-          "beta.k",
           "err_alpha_cms",
           "err_alpha_pms",
+          "inv.Sigma.alpha_cms",
+          "inv.Sigma.alpha_pms",
+          "delta.k",
           "sigma_delta",
+          "beta.k",
           "P",
           "y.sim")
 
@@ -54,11 +54,11 @@ pars <- c("alpha_pms", # required for P
 # ## Run the model ---------------------
 mod <- jags(data=inputdata,
             parameters.to.save=pars,
-            model.file = "model/ncp_MVN_SEmodel_JAGS_2.txt",
+            model.file = "model/JAGS/ncp_MVN_SEmodel_JAGS_2.txt",
             n.iter = 80000,         # total number of iterations per chain
             n.burnin = 10000,
             n.thin=35)
 
-saveRDS(mod, file='results/JAGS_model_MVN_NCP_kstar_SE_sum0_dsigma.RDS')
+saveRDS(mod, file='results/JAGS/JAGS_model_MVN_NCP_kstar_SE.RDS')
 
 

@@ -1,9 +1,10 @@
 library(tidyverse)
 library(tidybayes)
-library(mcmcplots)
+# library(mcmcplots)
 library(bayesplot)
 library(coda)
 library(shinystan)
+library(rjags)
 
 # Source code --------------------------------------
 source('code/stan_utility.R')
