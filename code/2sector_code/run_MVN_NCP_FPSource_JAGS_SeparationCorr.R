@@ -37,23 +37,19 @@ inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   matchyears = FP_source_data_wide$index_year)
 
 ## Parameters to look at ------------------------------
-pars <- c("alpha_pms", # required for P
-          "alpha_cms",
-          "err_alpha_cms",
-          "err_alpha_pms",
-          "R_cms",
-          "sigma_cms",
-          "R_pms",
-          "sigma_pms",
-          "delta.k",
-          "sigma_delta",
-          "beta.k",
-          "P",
-          "y.sim")
+pars <- c(#"alpha_pms", # required for P
+          # "alpha_cms",
+          # "err_alpha_cms",
+          # "err_alpha_pms",
+          "Sigma.alpha_pms",
+          "Sigma.alpha_cms")
+          # "delta.k",
+          # "sigma_delta",
+          # "beta.k"
 
 
 # ## Run the model ---------------------
-mod <- jags(data=inputdata,
+mod <- jags.parallel(data=inputdata,
             parameters.to.save=pars,
             model.file = "model/JAGS/ncp_MVN_SEmodel_JAGS_separationCorr.txt",
             n.iter = 80000,         # total number of iterations per chain

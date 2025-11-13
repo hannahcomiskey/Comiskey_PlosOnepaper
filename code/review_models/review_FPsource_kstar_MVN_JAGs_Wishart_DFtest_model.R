@@ -17,17 +17,15 @@ source("code/2sector_code/set_up_2sector_bivar_globalrunjags.R")
 mydata <- FP_source_data_wide[,c("Public", "Public.SE")]
 logit.data <- mydata %>%
   rowwise() %>%
-  mutate(y.cap = pmin(pmax(Public, 0.005), 0.995),
-         logit.Public = log(y.cap/(1-y.cap)),
-         logit.Public.Var = ((1/(y.cap*(1-y.cap)))^2)*Public.SE^2,
+  mutate(logit.Public = log(Public/(1-Public)),
+         logit.Public.Var = ((1/(Public*(1-Public)))^2)*Public.SE^2,
          logit.Public.SE = sqrt(logit.Public.Var))
 M =  length(n_method)
 
 # fit_sim model -----------------------------------------
-vispath = 'visualisations/MVN_alpha/'
+vispath = 'visualisations/MVN_delta/'
 
 # fit_sim model -----------------------------------------
-# fit_sim <- readRDS('results/JAGS/JAGS_model_MVN_NCP_kstar_SE_sum0_dsigma_parallel_noindia.RDS')
 fit_sim <- readRDS('results/JAGS/JAGS_model_MVN_NCP_kstar_SE.RDS')
 
 fit_sim$model
@@ -42,6 +40,11 @@ jags.fit.mcmc <- as.mcmc(fit_sim)
 
 # Plot ACF ---------------------------------------------------------------------
 mcmc_acf(jags.fit.mcmc, pars='sigma_delta')
+mcmc_acf(jags.fit.mcmc, pars=c('sigma_alpha_cms[1]'))
+mcmc_acf(jags.fit.mcmc, pars=c('sigma_alpha_pms[1]'))
+
+mcmc_acf(jags.fit.mcmc, pars=c('beta.k[2,124,10]'))
+
 
 # Set up indexing --------------------------------------------------------------
 method_index_table <- tibble(index_method = 1:length(n_method), Method = n_method)
@@ -93,31 +96,6 @@ for (r in 1:n_samples){
   lines(density(y_sim[r,]), col = rgb(135, 206, 235, max= 255, alpha=25)) 
 }
 dev.off()
-
-# Get correlations -------------------------------------------------------------
-
-corr_country <- cov2cor(solve(fit_sim$BUGSoutput$mean$inv.Sigma.alpha_cms))
-rownames(corr_country) <- colnames(corr_country) <- n_method
-
-corr_prov <- cov2cor(solve(fit_sim$BUGSoutput$mean$inv.Sigma.alpha_pms))
-rownames(corr_prov) <- colnames(corr_prov) <- n_method
-
-
-country_plot <- ggcorrplot::ggcorrplot(corr_country, 
-                                       type = "upper",
-                                       tl.cex = 18,
-                                       lab_size = 14,
-                                       lab = TRUE)  + theme(legend.position = 'none')
-prov_plot <- ggcorrplot::ggcorrplot(corr_prov,                                        
-                                    type = "upper",
-                                    tl.cex = 18,
-                                    lab_size = 14,
-                                    lab = TRUE)  + theme(legend.position = 'none')
-
-corr_plots <- ggpubr::ggarrange(country_plot, prov_plot, labels = "AUTO")
-ggsave(corr_plots, filename = paste0(vispath,'/parameter_plots/corr_plots.pdf'), height=12, width=15) 
-
-
 
 # Get P estimates --------------------------------------------------------------
 

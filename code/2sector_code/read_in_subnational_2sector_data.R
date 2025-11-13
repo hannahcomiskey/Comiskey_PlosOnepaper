@@ -3,12 +3,21 @@
 ##############################################
 subnat_FPsource_data <- readRDS("data/subnat_bivar_SE_source_data_20.RDS") # All countries
 
-FP_2030_countries1 <- unique(subnat_FPsource_data$Country)[c(1:9, 11:13, 16:26)]
-FP_2030_countries2 <- unique(subnat_FPsource_data$Country)[-c(10)] #remove india
+FP_2030_countries <- c(
+  # "Afghanistan", 
+  "Benin", "Burkina Faso", "Cameroon",
+  "Cote d'Ivoire", "Ethiopia", "Ghana",
+  "Guinea", "Kenya", "Liberia", "Madagascar",
+  "Malawi", "Mali", "Mozambique", "Myanmar",
+  "Nepal", "Niger", "Nigeria", "Pakistan",
+  "Rwanda", "Senegal", "Tanzania", "Uganda",
+  "Zimbabwe"
+)
+
 test_4c <- c('Kenya', 'Benin', 'Ethiopia', 'Cameroon')
 
 subnat_FPsource_data <- subnat_FPsource_data %>% 
-  filter(Country %in% FP_2030_countries2) %>%
+  filter(Country %in% FP_2030_countries) %>%
   ungroup() %>%
   dplyr::mutate(Region = stringr::str_to_title(Region))
 
@@ -18,14 +27,14 @@ subnat_FPsource_data <- subnat_FPsource_data %>%
 subnat_FPsource_data <- subnat_FPsource_data %>%
   dplyr::filter(Region!="NA")
 
-# Filter where the sample size is smaller than 2 people across all three sectors ---------
+# Filter where the sample size is smaller than 10 people across all three sectors ---------
 
 FP_source_data_wide <- subnat_FPsource_data %>% # Proportion data
   dplyr::ungroup() %>%
   dplyr::rename(Public.SE = se.Public, Private.SE = se.Private) %>%
   dplyr::select(Country, Region, Method,  average_year, Public, Private, Public.SE, Private.SE, Public_n, Private_n) %>%
   dplyr::arrange(Country) %>%
-  dplyr::filter(Public_n>=10 | Private_n>=10) 
+  dplyr::filter(Public_n>=20 | Private_n>=20) # Remove small sample sizes (DHS has 10 units sampled per cluster as min., 20 as average)
 
 # Make sure proportions add to 1 ----------
 FP_source_data_wide <- FP_source_data_wide %>%
@@ -83,23 +92,84 @@ if(nrow(SE_source_data_wide_X)>0) {
   FP_source_data_wide <- bind_rows(SE_source_data_wide_norm, SE_source_data_wide_X) # Put data back together again
 }
 
-# if(nrow(SE_source_data_wide_X)>0) {
-#   for(i in 1:nrow(SE_source_data_wide_X)) {
-#     num.SE0 <- which(SE_source_data_wide_X[i,c("Public.SE", "Private.SE")]<0.005)
-#     num.SEna <- which(is.na(SE_source_data_wide_X[i,c("Public.SE", "Private.SE")])==TRUE)
-#     DEFT <- ifelse(is.na(SE_source_data_wide_X$DEFT[i])==TRUE, 1.5, SE_source_data_wide_X$DEFT[i])
-#     N1 <- sum(SE_source_data_wide_X[i, c('Public_n', 'Private_n')], na.rm=TRUE) # Number of women surveyed
-#     phat <- 0.5/(N1+1) # Posterior mean of p under Jefferys prior for true prevalence of 0s.
-#     SE.hat <- sqrt((phat*(1-phat))/N1)
-#     SE_source_data_wide_X[i,c(col_index+num.SEna,col_index+num.SE0)] <- SE.hat*DEFT
-#   }
-# }
 
 # Remove proportions with two sectors still missing 
 FP_source_data_wide <- FP_source_data_wide %>% 
   filter(is.na(Public)==FALSE)
 
 FP_source_data_wide <- FP_source_data_wide %>% dplyr::arrange(Country, Region, Method, average_year)
+
+
+# #################################################
+# # Issues with subnational names -----------------
+# #################################################
+# Replace issues with Burkina Faso names
+FP_source_tmp <- FP_source_data_wide %>%
+  dplyr::filter(Country=="Burkina Faso")  %>%
+  dplyr::mutate(Region = case_when(Region == "North" ~ "Nord",
+                                   Region == "East" ~ "Est",
+                                   Region == "West" ~ "Centre-Ouest",
+                                   Region ==  "Central/South" ~ "Centre-Sud",
+                                   Region == "Ouagadougou" ~ "Centre Including Ouagadougou",
+                                   TRUE ~ as.character(Region)))
+
+FP_source_data_wide <- FP_source_data_wide %>%
+  dplyr::filter(Country!="Burkina Faso")
+
+FP_source_data_wide <- FP_source_data_wide %>%
+  merge(FP_source_tmp, all = TRUE)
+
+# # Replace issues with Rwanda names
+FP_source_tmp <- FP_source_data_wide %>%
+  dplyr::filter(Country=="Rwanda") %>%
+  dplyr::mutate(Region = case_when(Region == "Ouest" ~ "West",
+                                   Region == "Nord" ~ "North",
+                                   Region == "Sud" ~ "South",
+                                   Region == "Est" ~ "East",
+                                   Region == "Ville de Kigali" ~ "Kigali",
+                                   Region == "Ville De Kigali" ~ "Kigali",
+                                   Region == "Kigali City" ~ "Kigali",
+                                   Region == "Butare, Gitarama (Central, South)" ~ "South",
+                                   Region == "Cyangugu, Gikongoro (Southwest)" ~ "South",
+                                   Region == "Byumba, Kibungo, Umutara (Northeast)" ~ "North",
+                                   Region == "Gisenyi, Kibuye, Ruhengeri (Northwest)" ~ "West",
+                                   TRUE ~ as.character(Region)))
+
+FP_source_data_wide <- FP_source_data_wide %>%
+  dplyr::filter(Country!="Rwanda")
+
+FP_source_data_wide <- FP_source_data_wide %>%
+  merge(FP_source_tmp, all = TRUE)
+
+# Replace issues with Nigeria names
+FP_source_tmp <- FP_source_data_wide %>%
+  dplyr::filter(Country=="Nigeria") %>%
+  dplyr::mutate(Region = case_when(Region == "Northeast" ~ "North East",
+                                   Region == "Northwest" ~ "North West",
+                                   Region == "Southeast" ~ "South East",
+                                   Region == "Southwest" ~ "South West",
+                                   TRUE ~ as.character(Region)))
+
+FP_source_data_wide <- FP_source_data_wide %>%
+  dplyr::filter(Country!="Nigeria")
+
+FP_source_data_wide <- FP_source_data_wide %>%
+  merge(FP_source_tmp, all = TRUE)
+
+# Replace issues with Cote d'Ivoire names
+FP_source_tmp <- FP_source_data_wide %>%
+  dplyr::filter(Country=="Cote d'Ivoire") %>%
+  dplyr::mutate(Region = case_when(Region == "Center-East" ~ "Center East",
+                                   Region == "Center-North" ~ "Center North",
+                                   Region == "Center-West" ~ "Center West",
+                                   Region == "Center-South" ~ "Center South",
+                                   TRUE ~ as.character(Region)))
+
+FP_source_data_wide <- FP_source_data_wide %>%
+  dplyr::filter(Country!="Cote d'Ivoire")
+
+FP_source_data_wide <- FP_source_data_wide %>%
+  merge(FP_source_tmp, all = TRUE)
 
 
 #################################################

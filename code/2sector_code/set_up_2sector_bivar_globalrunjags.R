@@ -31,7 +31,7 @@ FP_source_data_wide <- country_index_fun(FP_source_data_wide, n_country)
 FP_source_data_wide <- method_index_fun(FP_source_data_wide, n_method)
 
 # Time indexing - important for splines -----------------------------------
-all_years <- seq(from = 1990, to = 2023.5, by=0.5) # shorter due to memory issues
+all_years <- seq(from = 1990, to = 2025.5, by=0.5) # shorter due to memory issues
 n_all_years <- length(all_years)
 
 FP_source_data_wide <- FP_source_data_wide %>%
