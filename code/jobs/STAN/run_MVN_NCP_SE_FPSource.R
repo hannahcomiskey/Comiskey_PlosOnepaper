@@ -1,24 +1,26 @@
-library(rjags)
-library(R2jags)
+library(rstan)
 library(tidyverse)
 library(tidybayes)
-library(parallel)
 
 # Source code --------------------------------------
 source("code/load_functions.R")
 source("code/2sector_code/read_in_subnational_2sector_data.R")
 source("code/2sector_code/set_up_2sector_bivar_globalrunjags.R")
 
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
 
 # Get logit of parameters and variance --------------------
 mydata <- FP_source_data_wide[,c("Public", "Public.SE")]
 logit.data <- mydata %>%
   rowwise() %>%
-  mutate(y.cap = pmin(pmax(Public, 0.005), 0.995),
-         logit.Public = log(y.cap/(1-y.cap)),
-         logit.Public.Var = ((1/(y.cap*(1-y.cap)))^2)*Public.SE^2,
+  mutate(logit.Public = log(Public/(1-Public)),
+         logit.Public.Var = ((1/(Public*(1-Public)))^2)*Public.SE^2,
          logit.Public.SE = sqrt(logit.Public.Var))
-M =  length(n_method)
+
+# Source simulated data --------------------------------------
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
 
 ## The required data ------------------------------
 inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using total proportions as collapsing over sectors
@@ -29,31 +31,38 @@ inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   K = K,
                   H = H,
                   kstar = Kstar,
+                  zero = 0,
                   C_count = length(n_country),
                   P_count = length(n_subnat),
                   M_count = length(n_method),
-                  Omega = diag(M) * 0.01 + diag(M),
-                  matchcountry= index_country_subnat_tbl$index_country,
+                  S_count = 2,
                   matchsubnat = FP_source_data_wide$index_subnat,
+                  matchcountry = index_country_subnat_tbl$index_country,
                   matchmethod = FP_source_data_wide$index_method,
                   matchyears = FP_source_data_wide$index_year)
 
 ## Parameters to look at ------------------------------
-pars <- c( "alpha_pms", # required for P
-          "inv.Sigma.alpha_cms",
-          "inv.Sigma.alpha_pms",
-          "sigma_delta",
-           "beta.k")
+pars <- c("alpha_pms", # required for P
+          "beta_k",
+          "sigmabeta_Omega",
+          "sigmabeta_tau",
+          "sigmaalpha_Omega",
+          "sigmaalpha_tau",
+          "sigma_delta")
+
+# Run stan model ------------------
+
+fit <- stan(
+  file = "model/STAN/ncp_MVN_model_SE.stan",  # Stan program
+  data = inputdata,    # named list of data
+  pars = pars,
+  iter = 80000,         # total number of iterations per chain
+  warmup = 10000,
+  thin=35,
+  chains=3,
+  save_warmup = FALSE,
+  control=list(adapt_delta=0.99)
+)
 
 
-# ## Run the model ---------------------
-mod <- jags.parallel(data=inputdata,
-            parameters.to.save=pars,
-            model.file = "model/JAGS/ncp_MVN_SEmodel_JAGS_2.txt",
-            n.iter = 80000,         # total number of iterations per chain
-            n.burnin = 10000,
-            n.thin=35)
-
-saveRDS(mod, file='results/JAGS/JAGS_model_MVN_NCP_kstar_SE.RDS')
-
-
+saveRDS(fit, file='results/STAN_model_FPsource.RDS')

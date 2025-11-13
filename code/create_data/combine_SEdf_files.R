@@ -65,13 +65,13 @@ cleaned_SE_source <- country_SEestimates %>%
                             Country=='Burkina Faso' & Region =='Centre-Nord' ~ 'Central/North',
                             Country=='Burkina Faso' & Region =='Centre-Est' ~ 'Central/East',
                             Country=='Burkina Faso' & Region =='Sud-Ouest' ~ 'South/West',
+                            Country=="Cote d'Ivoire" & Region =='South Without Abidjan' ~ 'South',
+                            Country=="Cote d'Ivoire" & Region =='Center' ~ 'Centre',
+                            Country=="Cote d'Ivoire" & Region =='Capital (Abidjan)' ~ 'Abidjan',
+                            Country=="Cote d'Ivoire" & Region =='City Of Abidjan' ~ 'Abidjan',
                             Country=="Cote d'Ivoire" & Region =='Center East' ~ 'Centre-East',
                             Country=="Cote d'Ivoire" & Region =='Center North' ~ 'Centre-North',
                             Country=="Cote d'Ivoire" & Region =='Center West' ~ 'Centre-West',
-                            Country=="Cote d'Ivoire" & Region =='Center-East' ~ 'Centre-East',
-                            Country=="Cote d'Ivoire" & Region =='Center-North' ~ 'Centre-North',
-                            Country=="Cote d'Ivoire" & Region =='Center-West' ~ 'Centre-West',
-                            Country=="Cote d'Ivoire" & Region =='Center' ~ 'Centre',
                             Country=="Cote d'Ivoire" & Region =='North East' ~ 'North-East',
                             Country=="Cote d'Ivoire" & Region =='North West' ~ 'North-West',
                             Country=="Cote d'Ivoire" & Region =='South West' ~ 'South-West',
@@ -84,7 +84,7 @@ cleaned_SE_source <- country_SEestimates %>%
                             Country=="Nigeria" & Region =='Northeast' ~ 'North-East',
                             Country=="Nigeria" & Region =='North East' ~ 'North-East',
                             .default = as.character(Region))) %>%
-  filter(Region!='Na')
+  filter(Region!='Na' & Region != "Countryside" & Region != "Small City") 
 
 # relgion <- readRDS('data/IPUMS/SEdf/religion_ipums.RDS') %>% 
 #   rename(religion_proportion = Subnat_Freq) %>%

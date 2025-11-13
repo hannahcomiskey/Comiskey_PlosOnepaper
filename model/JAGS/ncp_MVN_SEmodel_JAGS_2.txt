@@ -46,13 +46,16 @@ model{
     
 ## Priors
   # Inverse-Wishart prior for country-level params
-  inv.Sigma.alpha_cms[1:M_count,1:M_count] ~ dwish(Omega[1:M_count,1:M_count], M_count+5)
+  inv.Sigma.alpha_cms ~ dwish(Omega, M_count + 1)
 
   # Inverse-Wishart prior for province-level params
-  inv.Sigma.alpha_pms[1:M_count,1:M_count] ~ dwish(Omega[1:M_count,1:M_count], M_count+5)
-
+  inv.Sigma.alpha_pms ~ dwish(Omega, M_count + 2)
+  
+  # Rates of change
   sigma_delta ~ dnorm(0, 2^-2)T(0,) 
   tau_delta <- sigma_delta^-2
+  
+  # Intercepts
   for(c in 1:C_count) { # country loop
     err_alpha_cms[1:M_count,c] ~ dmnorm(rep(0,M_count), inv.Sigma.alpha_cms[1:M_count,1:M_count])
     alpha_cms[1:M_count,c] <- rep(0,M_count) + err_alpha_cms[1:M_count,c]

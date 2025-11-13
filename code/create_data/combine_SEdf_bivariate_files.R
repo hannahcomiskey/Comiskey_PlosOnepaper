@@ -39,7 +39,7 @@ for(i in 1:length(file_names)) {
 country_SEestimates <- country_SEestimates %>% 
   select(Country, Region, Method, Year, Public, Private, se.Public, se.Private, Public_n, Private_n) %>%
   mutate(Region = str_to_title(Region)) %>%
- # mutate(Region = str_replace_all(Region, "[^[:alnum:]]", " ")) %>%
+  mutate(Region = str_to_title(Region)) %>%
   mutate(Region = case_when(Country=='Burkina Faso' & Region =='Est' ~ 'East', 
                             Country=='Burkina Faso' & Region =='Sud' ~ 'South',
                             Country=='Burkina Faso' & Region =='Nord' ~ 'North',
@@ -48,6 +48,10 @@ country_SEestimates <- country_SEestimates %>%
                             Country=='Burkina Faso' & Region =='Centre-Nord' ~ 'Central/North',
                             Country=='Burkina Faso' & Region =='Centre-Est' ~ 'Central/East',
                             Country=='Burkina Faso' & Region =='Sud-Ouest' ~ 'South/West',
+                            Country=="Cote d'Ivoire" & Region =='South Without Abidjan' ~ 'South',
+                            Country=="Cote d'Ivoire" & Region =='Center' ~ 'Centre',
+                            Country=="Cote d'Ivoire" & Region =='Capital (Abidjan)' ~ 'Abidjan',
+                            Country=="Cote d'Ivoire" & Region =='City Of Abidjan' ~ 'Abidjan',
                             Country=="Cote d'Ivoire" & Region =='Center East' ~ 'Centre-East',
                             Country=="Cote d'Ivoire" & Region =='Center North' ~ 'Centre-North',
                             Country=="Cote d'Ivoire" & Region =='Center West' ~ 'Centre-West',
@@ -62,9 +66,8 @@ country_SEestimates <- country_SEestimates %>%
                             Country=="Nigeria" & Region =='North West' ~ 'North-West',
                             Country=="Nigeria" & Region =='Northeast' ~ 'North-East',
                             Country=="Nigeria" & Region =='North East' ~ 'North-East',
-                            .default = as.character(Region)
-                            ))
-                          
+                            .default = as.character(Region))) %>%
+  filter(Region!='Na' & Region != "Countryside" & Region != "Small City") 
 
 # Checking original data to see if sums to 1
 country_SEestimates <- country_SEestimates %>%
@@ -299,6 +302,10 @@ names_varcov <- readRDS('data/names_varcov_bivar_2022.RDS') %>%
                             Country=='Burkina Faso' & Region =='Centre-Nord' ~ 'Central/North',
                             Country=='Burkina Faso' & Region =='Centre-Est' ~ 'Central/East',
                             Country=='Burkina Faso' & Region =='Sud-Ouest' ~ 'South/West',
+                            Country=="Cote d'Ivoire" & Region =='South Without Abidjan' ~ 'South',
+                            Country=="Cote d'Ivoire" & Region =='Center' ~ 'Centre',
+                            Country=="Cote d'Ivoire" & Region =='Capital (Abidjan)' ~ 'Abidjan',
+                            Country=="Cote d'Ivoire" & Region =='City Of Abidjan' ~ 'Abidjan',
                             Country=="Cote d'Ivoire" & Region =='Center East' ~ 'Centre-East',
                             Country=="Cote d'Ivoire" & Region =='Center North' ~ 'Centre-North',
                             Country=="Cote d'Ivoire" & Region =='Center West' ~ 'Centre-West',
