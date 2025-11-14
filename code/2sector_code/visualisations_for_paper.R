@@ -155,15 +155,16 @@ ggplot() +
     size = 3, color = "black", position = position_jitter(width = 0.3, height = 0.3)) +
   theme_minimal() +
   labs(x="", y="")+
+  theme(title = element_text(size=20), axis.text.x = element_text(angle = 90), strip.text.x = element_text(size=20), strip.text.y = element_text(size=20), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +
   theme(legend.position = 'bottom') +
   facet_grid(Method~average_year)
 ggsave(filename = paste0(vispath,'nigeria_maps.pdf'), height=12, width=15) 
 
 
-
 rwanda_preds <- P_samps_df %>% filter(Country == "Rwanda" & average_year %in% c(1990, 2000, 2010, 2020, 2025))
 rwanda_shp <- read_sf("data/shape/dhs_ipumsi_rw/dhs_ipumsi_rw.shp") %>%
-  rename(Region = ADMIN_NAME)
+  rename(Region = ADMIN_NAME) %>%
+  mutate(Region = ifelse(Region == "Kigali City", "Kigali", Region))
   
 rwanda_preds <- rwanda_preds %>% left_join(rwanda_shp)
 
@@ -173,41 +174,51 @@ ggplot() +
   geom_sf_text(data = rwanda_preds %>% filter(Sector=="Private"), aes(geometry = geometry, label = Region), size = 3, color = "black") +
   theme_minimal() +
   labs(x="", y="")+
+  theme(axis.text.x = element_text(angle = 90), strip.text.x = element_text(size=20), strip.text.y = element_text(size=16), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +
   theme(legend.position = 'bottom') +
   facet_grid(Method~average_year)
-ggsave(filename = paste0(vispath,'rwanda_maps.pdf'), height=12, width=15) 
-
+ggsave(filename = paste0(vispath,'rwanda_maps.pdf'), height=14, width=16) 
 
 
 # Plot predictions ----------------------------------------------------------------
 rwanda_obs <- P_df %>% filter(Country=="Rwanda" & Method %in% c("Implants", "Injectables", "IUD", "OC Pills"))
-rwanda_preds <- P_samps_df %>% filter(Country=="Rwanda" & Method %in% c("Implants", "Injectables", "IUD", "OC Pills"))
+rwanda_preds <- P_samps_df %>% filter(Country=="Rwanda" & Method %in% c("Implants", "Injectables", "IUD", "OC Pills")  & average_year < 2027)
 
 ggplot() +
   geom_point(data = rwanda_obs, aes(x=average_year, y=Observed, colour=Sector, pch=Sector)) +
   geom_errorbar(data = rwanda_obs, aes(x=average_year, ymin=lower_95, ymax=upper_95, colour=Sector)) +
   geom_line(data = rwanda_preds, aes(x=average_year, y=Mean, colour=Sector, lty=Sector)) +
   geom_ribbon(data = rwanda_preds, aes(x=average_year, ymin=lower_95, ymax = upper_95, fill=Sector), alpha=0.2) +
-  theme(title = element_text(size=20), axis.text.x = element_text(angle = 90), strip.text.x = element_text(size=8), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +
+  theme_minimal() +
+  theme(title = element_text(size=20), axis.text.x = element_text(angle = 90), strip.text.x = element_text(size=20), strip.text.y = element_text(size=20), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +
   theme(legend.position = "bottom", legend.title = element_text(size = 20), legend.text = element_text(size = 20))+
   facet_grid(Region ~ Method)
 ggsave(filename = paste0("rwanda_supplyshares_plot.pdf"), path = paste0(vispath, '/figs'), height=12, width=15) 
 
-nga_obs <- P_df %>% filter(Country=="Nigeria" & Method %in% c("Female Sterilization", "Injectables", "IUD"))
-nga_preds <- P_samps_df %>% filter(Country=="Nigeria" & Method %in% c("Female Sterilization", "Injectables", "IUD"))
+nga_obs <- P_df %>% filter(Country=="Nigeria" & Method %in% c("Female Sterilization", "Injectables", "OC Pills"))
+nga_preds <- P_samps_df %>% filter(Country=="Nigeria" & Method %in% c("Female Sterilization", "Injectables", "OC Pills")  & average_year < 2027)
 
 ggplot() +
   geom_point(data = nga_obs, aes(x=average_year, y=Observed, colour=Sector, pch=Sector)) +
   geom_errorbar(data = nga_obs, aes(x=average_year, ymin=lower_95, ymax=upper_95, colour=Sector)) +
   geom_line(data = nga_preds, aes(x=average_year, y=Mean, colour=Sector, lty=Sector)) +
   geom_ribbon(data = nga_preds, aes(x=average_year, ymin=lower_95, ymax = upper_95, fill=Sector), alpha=0.2) +
-  theme(title = element_text(size=20), axis.text.x = element_text(angle = 90), strip.text.x = element_text(size=8), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +
+  theme_minimal() +
+  theme(title = element_text(size=20), axis.text.x = element_text(angle = 90), strip.text.x = element_text(size=20), strip.text.y = element_text(size=20), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +
   theme(legend.position = "bottom", legend.title = element_text(size = 20), legend.text = element_text(size = 20))+
   facet_grid(Region ~ Method)
 ggsave(filename = paste0("nigeria_supplyshares_plot.pdf"), path = paste0(vispath, '/figs'), height=12, width=15) 
 
+# Get 2025 summary -------------------------------------------------------------
 
-# Get survey data summary ----------------------------
+P_samps_df %>% 
+  filter(average_year ==2025.5) %>%
+  group_by(Method, Sector) %>%
+  summarise(mean_pred = mean(Mean),
+            sd_pred = sd(Mean)) %>%
+  pivot_wider(names_from = Sector, values_from = c(mean_pred, sd_pred))
+
+# Get survey data summary ------------------------------------------------------
 n_province <- FP_source_data_long %>% 
   group_by(Country) %>%
   distinct(Region) %>%

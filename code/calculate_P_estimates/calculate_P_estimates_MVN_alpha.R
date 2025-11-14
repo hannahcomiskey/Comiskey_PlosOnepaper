@@ -20,14 +20,14 @@ vars <- as.vector(unlist(dimnames(mod$BUGSoutput$sims.array)[3]))
 
 subnat_index_table %>% tail()
 
-grep("alpha_pms\\[5,153\\]", vars)
-grep("beta.k\\[5,153,13\\]", vars)
+grep("alpha_pms\\[5,159\\]", vars)
+grep("beta.k\\[5,159,13\\]", vars)
 
 # Get alpha_pms 
-alpha_pms <- mod$BUGSoutput$sims.array[,,grep("alpha_pms\\[1,1\\]", vars)[1]:grep("alpha_pms\\[5,153\\]", vars)[1]]
+alpha_pms <- mod$BUGSoutput$sims.array[,,grep("alpha_pms\\[1,1\\]", vars)[1]:grep("alpha_pms\\[5,159\\]", vars)[1]]
 alpha_pms <- rbind(alpha_pms[,1,], alpha_pms[,2,])
 dim(alpha_pms)
-beta.k <- mod$BUGSoutput$sims.array[,,grep("beta.k\\[1,1,1\\]", vars):grep("beta.k\\[5,153,13\\]", vars)]
+beta.k <- mod$BUGSoutput$sims.array[,,grep("beta.k\\[1,1,1\\]", vars):grep("beta.k\\[5,159,13\\]", vars)]
 beta.k <- rbind(beta.k[,1,], beta.k[,2,])
 dim(beta.k)
 
