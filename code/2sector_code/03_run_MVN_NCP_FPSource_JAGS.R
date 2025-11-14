@@ -6,17 +6,16 @@ library(parallel)
 
 # Source code --------------------------------------
 source("code/load_functions.R")
-source("code/2sector_code/read_in_subnational_2sector_data.R")
-source("code/2sector_code/set_up_2sector_bivar_globalrunjags.R")
+source("code/2sector_code/01_read_in_subnational_2sector_data.R") # Read in data
+source("code/2sector_code/02_set_up_2sector_bivar_globalrunjags.R") # Data cleaning and set up model inputs
 
 
 # Get logit of parameters and variance --------------------
 mydata <- FP_source_data_wide[,c("Public", "Public.SE")]
 logit.data <- mydata %>%
   rowwise() %>%
-  mutate(y.cap = pmin(pmax(Public, 0.005), 0.995),
-         logit.Public = log(y.cap/(1-y.cap)),
-         logit.Public.Var = ((1/(y.cap*(1-y.cap)))^2)*Public.SE^2,
+  mutate(logit.Public = log(Public/(1-Public)),
+         logit.Public.Var = ((1/(Public*(1-Public)))^2)*Public.SE^2,
          logit.Public.SE = sqrt(logit.Public.Var))
 M =  length(n_method)
 

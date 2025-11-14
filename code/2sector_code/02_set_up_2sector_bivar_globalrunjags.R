@@ -44,7 +44,7 @@ FP_source_data_wide <- FP_source_data_wide %>%
 t_seq_2 <- floor(FP_source_data_wide$index_year) # Time sequence for countries
 country_seq <- FP_source_data_wide$Country
 n_regions <- unique(FP_source_data_wide$Super_region)
-n_sector <- c("Public", "Commercial_medical", "Other") # Names of categories
+n_sector <- c("Public", "Private") # Names of categories
 n_obs <- nrow(FP_source_data_wide) # Total number of observations
 year_seq <- seq(min(t_seq_2),max(t_seq_2), by=1)
 n_years <- length(year_seq)
