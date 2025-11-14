@@ -148,6 +148,7 @@ FP_source_tmp <- FP_source_data_wide %>%
                                    Region == "Northwest" ~ "North West",
                                    Region == "Southeast" ~ "South East",
                                    Region == "Southwest" ~ "South West",
+                                   Region == "Central" ~ "North Central",
                                    TRUE ~ as.character(Region)))
 
 FP_source_data_wide <- FP_source_data_wide %>%

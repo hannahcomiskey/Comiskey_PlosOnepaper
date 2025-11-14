@@ -1,0 +1,60 @@
+library(rjags)
+library(R2jags)
+library(tidyverse)
+library(tidybayes)
+library(parallel)
+
+# Source code --------------------------------------
+source("code/load_functions.R")
+source("code/2sector_code/read_in_subnational_2sector_data.R")
+source("code/2sector_code/set_up_2sector_bivar_globalrunjags_loo.R")
+
+
+# Get logit of parameters and variance --------------------
+mydata <- training_data[,c("Public", "Public.SE")]
+logit.data <- mydata %>%
+  rowwise() %>%
+  mutate(y.cap = pmin(pmax(Public, 0.005), 0.995),
+         logit.Public = log(y.cap/(1-y.cap)),
+         logit.Public.Var = ((1/(y.cap*(1-y.cap)))^2)*Public.SE^2,
+         logit.Public.SE = sqrt(logit.Public.Var))
+M =  length(n_method)
+
+## The required data ------------------------------
+inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using total proportions as collapsing over sectors
+                  se_prop = as.vector(unlist(logit.data[,c("logit.Public.SE")])),
+                  Bik = B.ik,
+                  n_years = n_all_years,
+                  n_obs = nrow(logit.data),
+                  K = K,
+                  H = H,
+                  kstar = Kstar,
+                  C_count = length(n_country),
+                  P_count = length(n_subnat),
+                  M_count = length(n_method),
+                  Omega = diag(M) * 0.01 + diag(M),
+                  matchcountry= index_country_subnat_tbl$index_country,
+                  matchsubnat = training_data$index_subnat,
+                  matchmethod = training_data$index_method,
+                  matchyears = training_data$index_year
+                  )
+
+## Parameters to look at ------------------------------
+pars <- c("alpha_pms", # required for P
+          "inv.Sigma.alpha_cms",
+          "inv.Sigma.alpha_pms",
+          "sigma_delta",
+           "beta.k")
+
+
+# ## Run the model ---------------------
+mod <- jags.parallel(data=inputdata,
+            parameters.to.save=pars,
+            model.file = "model/JAGS/ncp_MVN_SEmodel_JAGS_2.txt",
+            n.iter = 80000,         # total number of iterations per chain
+            n.burnin = 10000,
+            n.thin=35)
+
+saveRDS(mod, file='results/JAGS/JAGS_model_MVN_NCP_kstar_SE_loo.RDS')
+
+
