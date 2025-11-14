@@ -1,6 +1,8 @@
 Bayesian probabilistic projections of proportions with limited data: An application to subnational contraceptive method supply shares.
-Hannah Comiskey1*, Niamh Cahill 2, Leontine Alkema 3, David Fraizer 1, Worapree
-Maneesoonthorn1.
+
+Hannah Comiskey 1*, Niamh Cahill 2, Leontine Alkema 3, David Fraizer 1, Worapree
+Maneesoonthorn 1.
+
 1 Department of Econometrics and Business Statistics, Monash University, Melbourne,
 Australia.
 2 Department of Mathematics and Statistics, Maynooth University, Kildare, Ireland.
