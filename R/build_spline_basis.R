@@ -32,7 +32,7 @@ build_spline_basis <- function(T_star, all_years = seq(1990, 2030.5, by = 0.5), 
   
   for (i in seq_len(n_subnat)) {
     lastobs <- T_star$average_year[i]
-    res <- bs_bbase_precise(all_years = all_years, lastobs = lastobs, nseg = nseg)
+    res <- bs_bbase_precise(x = all_years, lastobs = lastobs, nseg = nseg)
     # res$B is matrix length(all_years) x K
     B_ik[i, , ] <- as.matrix(res$B)
     Kstar[i] <- res$Kstar

@@ -1,0 +1,93 @@
+---
+title: "Plos_One_paper_analysis"
+author: "Hannah Comiskey"
+date: "2025-11-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This is the vignette to recreate the analysis of 'Bayesian probabilistic projections of proportions with limited data: An application to subnational contraceptive method supply shares'.
+
+```{r subnational data}
+library(dplyr)
+library(rjags)
+library(R2jags)
+
+glimpse(subnat_bivar_data)
+```
+
+## Prepare data
+
+This function reads in the raw data, cleans the inputs and returns a list of inputs used in the JAGS model. The inputs include the splines, indexing and time sequence to estimate over.
+
+```{r prepare data, echo=FALSE}
+
+data <- clean_fp_source_data(mcmsector::subnat_bivar_data, deft_lookup = mcmsector::DEFT_DHS_database)
+
+inputs <- run_preprocessing_pipeline(raw_df = data, 
+                                     area_classification = mcmsector::Country_and_area_classification_inclFP2020,
+                                     methods = c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills"),
+                                     all_years = seq(1990, 2030.5, by = 0.5),
+                                     nseg = 10)
+
+
+```
+
+# Run JAGS model
+```{r run JAGS model, echo=FALSE}
+mydata <- inputs$data[,c("Public", "Public.SE")]
+logit.data <- mydata %>%
+  rowwise() %>%
+  mutate(logit.Public = log(Public/(1-Public)),
+         logit.Public.Var = ((1/(Public*(1-Public)))^2)*Public.SE^2,
+         logit.Public.SE = sqrt(logit.Public.Var))
+n_methods = c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills")
+M =  length(n_methods)
+
+```
+
+```{r}
+## The required data ------------------------------
+inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using total proportions as collapsing over sectors
+                  se_prop = as.vector(unlist(logit.data[,c("logit.Public.SE")])),
+                  Bik = inputs$splines$B_ik,
+                  n_years = inputs$meta$n_years,
+                  n_obs = nrow(logit.data),
+                  K = inputs$splines$K,
+                  H = inputs$splines$H,
+                  kstar = inputs$splines$Kstar,
+                  C_count = length(inputs$meta$n_country),
+                  P_count = length(inputs$meta$n_subnat),
+                  M_count = length(c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills")),
+                  Omega = diag(M) * 0.01 + diag(M),
+                  matchcountry= inputs$meta$index_country_subnat_tbl$index_country,
+                  matchsubnat = inputs$data$index_subnat,
+                  matchmethod = inputs$data$index_method,
+                  matchyears = inputs$data$index_year)
+```
+
+```{r}
+pars <- c( "alpha_pms", # required for P
+          "inv.Sigma.alpha_cms",
+          "inv.Sigma.alpha_pms",
+          "sigma_delta",
+           "beta.k")
+
+model_path <- system.file("model", "ncp_MVN_SEmodel_JAGS.txt", package = "mcmsector")
+
+mod <- jags.parallel(data=inputdata,
+            parameters.to.save=pars,
+            model.file = model_path,
+            n.iter = 80000,         # total number of iterations per chain
+            n.burnin = 10000,
+            n.thin=35)
+
+saveRDS(mod, file='JAGS_model_MVN_NCP_kstar_SE.RDS')
+
+```
+

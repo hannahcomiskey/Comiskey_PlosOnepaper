@@ -17,7 +17,7 @@ compute_T_star <- function(df) {
   required <- c("Country", "Region", "index_country", "index_subnat", "average_year", "index_year")
   stopifnot(all(required %in% names(df)))
   
-  df %>%
+  Tstar_df <- df %>%
     dplyr::group_by(Country, Region) %>%
     dplyr::filter(index_year == max(index_year, na.rm = TRUE)) %>%
     dplyr::arrange(index_subnat) %>%
@@ -25,5 +25,5 @@ compute_T_star <- function(df) {
     dplyr::select(index_country, index_subnat, average_year, index_year) %>%
     dplyr::distinct()
   
-  return(df)
+  return(Tstar_df)
 }

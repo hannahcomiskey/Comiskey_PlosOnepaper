@@ -37,6 +37,7 @@ run_preprocessing_pipeline <- function(raw_df,
                                        all_years = seq(1990, 2030.5, by = 0.5),
                                        nseg = 10,
                                        min_n = 20) {
+  
   # 1. standardise country names & attach super-region
   df1 <- standardize_country_names(raw_df, area_classification)
   
@@ -46,7 +47,7 @@ run_preprocessing_pipeline <- function(raw_df,
   # Optional: if user wants SE cleaning before indexing, they can run the earlier cleaning functions
   # (we kept this pipeline focused on indexing & metadata)
   # 3. Build jags metadata
-  meta <- build_jags_metadata(df2, all_years = all_years)
+  meta <- build_jags_inputs(df2, all_years = all_years)
   
   # 4. Compute T_star
   T_star <- compute_T_star(df2)

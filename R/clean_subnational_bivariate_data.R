@@ -38,7 +38,7 @@
 #' cleaned <- clean_fp_source_data(subnat_raw, deft_db)
 #' }
 clean_fp_source_data <- function(subnat_data,
-                 deft_lookup,
+                 deft_lookup = mcmsector::DEFT_DHS_database,
                  fp2030_countries = c(
                   "Benin", "Burkina Faso", "Cameroon",
                   "Cote d'Ivoire", "Ethiopia", "Ghana",
@@ -57,8 +57,10 @@ clean_fp_source_data <- function(subnat_data,
    
    # Keep only samples with sufficient sample size 
    df <- df %>%
-    dplyr::rename(Public.SE = se.Public, Private.SE = se.Private) %>%
-    dplyr::filter(Public_n >= min_n | Private_n >= min_n)
+     dplyr::rename(Public.SE = se.Public, Private.SE = se.Private) %>%
+     dplyr::select(Country, Region, Method,  average_year, Public, Private, Public.SE, Private.SE, Public_n, Private_n) %>%
+     dplyr::arrange(Country) %>%
+     dplyr::filter(Public_n >= min_n | Private_n >= min_n)
    
    # Compute totals and fill missing proportions 
    df <- df %>%

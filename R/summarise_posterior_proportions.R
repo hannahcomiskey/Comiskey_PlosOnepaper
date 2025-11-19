@@ -1,0 +1,55 @@
+#' Summarise posterior probability samples into mean and quantiles
+#'
+#' @description
+#' Converts a 5D posterior draws array `P` into a tidy long data frame containing
+#' posterior means and 95% credible intervals for each sector, method, region,
+#' and year.
+#'
+#' @param P A 5D array of posterior samples with dimensions:
+#'   (sample, sector, method, subnat, year).
+#' @param method_index_table Tibble mapping method indices to method names.
+#' @param sector_index_table Tibble mapping sector indices to sector names.
+#' @param subnat_index_table Mapping subnational indices to regions/countries.
+#' @param year_index_table Mapping year index to calendar year.
+#'
+#' @return A tibble with posterior mean, lower 95%, and upper 95% intervals.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' df <- summarise_posterior_proportions(P, method_tbl, sector_tbl, subnat_tbl, year_tbl)
+#' }
+summarise_posterior_proportions <- function( P,
+                                             method_index_table,
+                                             sector_index_table,
+                                             subnat_index_table,
+                                             year_index_table) {
+  
+  # Means -----------------------------------------------------------
+  P_mean <- apply(P, c(2,3,4,5), mean)
+  P_mean <- plyr::adply(P_mean, .margins = c(2, 3, 4))
+  colnames(P_mean) <- c("index_method", "index_subnat", "index_year", "Public", "Private")
+  
+  P_mean <- P_mean %>%
+    mutate(across(everything(), as.numeric)) %>%
+    pivot_longer(cols = c("Public", "Private"), names_to="Sector", values_to="Mean") %>%
+    left_join(method_index_table, by="index_method")
+  
+  # Quantiles --------------------------------------------------------
+  P_q <- apply(P, c(2,3,4,5), quantile, probs=c(0.025, 0.975))
+  P_q <- plyr::adply(P_q, .margins = c(2,3,4,5))
+  colnames(P_q) <- c("index_sector", "index_method", "index_subnat", "index_year",
+                     "lower_95", "upper_95")
+  
+  P_q <- P_q %>%
+    mutate(across(everything(), as.numeric)) %>%
+    left_join(method_index_table, by="index_method") %>%
+    left_join(sector_index_table, by="index_sector") %>%
+    left_join(subnat_index_table, by=c("index_subnat")) %>%
+    left_join(year_index_table, by="index_year")
+  
+  # Combine ---------------------------------------------------------
+  P_df <- left_join(P_mean, P_q,
+            by=c("index_method","index_subnat","index_year","Sector"))
+  return(P_df)
+}

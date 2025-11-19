@@ -28,6 +28,7 @@ add_index_variables <- function(df,
   
   # create country - subnat unique table
   country_subnat_tbl <- df %>%
+    ungroup() %>%
     dplyr::select(Country, Region) %>%
     dplyr::distinct() %>%
     dplyr::arrange(Country, Region) %>%
@@ -36,7 +37,7 @@ add_index_variables <- function(df,
   
   # add indices to main df using left_join to keep row order
   df2 <- df %>%
-    dplyr::left_join(country_subnat_tbl, by = c("Country", "Region"))
+    dplyr::left_join(country_subnat_tbl, by = c("Country", "Region"), relationship = "many-to-many")
   
   # country index (factor level integer)
   df2 <- df2 %>%
