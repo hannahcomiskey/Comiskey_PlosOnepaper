@@ -104,16 +104,16 @@ for(i in 1:nrow(T_star)) {
 K <- dim(res$B.ik)[2]
 H <- K-1
 
-## Plot basis
-par(lwd = 3, cex.axis = 1.3, cex.lab = 1.3, cex.main = 1.3, mfrow = c(1,1))
-plot(all_years,res$B.ik[,1], type= "n", xaxt="n",
-     xlab = "Year",
-     ylim = c(0,1), ylab ="Basis Function",
-     xlim = range(all_years))
-axis(1, at = min(all_years):max(all_years))
-abline(v=res$knots.k, col = seq(1, K), lwd = 1)
-for (k in 1:K){
-  lines(all_years,res$B.ik[,k], type= "l", col = k, lwd = 1)
-}
+# ## Plot basis
+# par(lwd = 3, cex.axis = 1.3, cex.lab = 1.3, cex.main = 1.3, mfrow = c(1,1))
+# plot(all_years,res$B.ik[,1], type= "n", xaxt="n",
+#      xlab = "Year",
+#      ylim = c(0,1), ylab ="Basis Function",
+#      xlim = range(all_years))
+# axis(1, at = min(all_years):max(all_years))
+# abline(v=res$knots.k, col = seq(1, K), lwd = 1)
+# for (k in 1:K){
+#   lines(all_years,res$B.ik[,k], type= "l", col = k, lwd = 1)
+# }
 
 

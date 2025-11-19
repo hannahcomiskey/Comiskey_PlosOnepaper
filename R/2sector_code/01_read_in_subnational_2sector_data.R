@@ -14,8 +14,6 @@ FP_2030_countries <- c(
   "Zimbabwe"
 )
 
-test_4c <- c('Kenya', 'Benin', 'Ethiopia', 'Cameroon')
-
 subnat_FPsource_data <- subnat_FPsource_data %>% 
   filter(Country %in% FP_2030_countries) %>%
   ungroup() %>%
