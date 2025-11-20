@@ -11,7 +11,7 @@
 #'
 #' @return A list with elements:
 #' \itemize{
-#'  \item B_ik: array [n_subnat x length(all_years) x K]
+#'  \item B_ik: array (n_subnat x length(all_years) x K)
 #'  \item Kstar: integer vector length n_subnat (effective K for each area)
 #'  \item knots_all: matrix of knots (n_subnat x K)
 #'  \item K: number of basis columns

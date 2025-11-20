@@ -31,9 +31,9 @@ summarise_posterior_proportions <- function( P,
   colnames(P_mean) <- c("index_method", "index_subnat", "index_year", "Public", "Private")
   
   P_mean <- P_mean %>%
-    mutate(across(everything(), as.numeric)) %>%
-    pivot_longer(cols = c("Public", "Private"), names_to="Sector", values_to="Mean") %>%
-    left_join(method_index_table, by="index_method")
+    dplyr::mutate(across(everything(), as.numeric)) %>%
+    tidyr::pivot_longer(cols = c("Public", "Private"), names_to="Sector", values_to="Mean") %>%
+    dplyr::left_join(method_index_table, by="index_method")
   
   # Quantiles --------------------------------------------------------
   P_q <- apply(P, c(2,3,4,5), quantile, probs=c(0.025, 0.975))
@@ -42,14 +42,13 @@ summarise_posterior_proportions <- function( P,
                      "lower_95", "upper_95")
   
   P_q <- P_q %>%
-    mutate(across(everything(), as.numeric)) %>%
-    left_join(method_index_table, by="index_method") %>%
-    left_join(sector_index_table, by="index_sector") %>%
-    left_join(subnat_index_table, by=c("index_subnat")) %>%
-    left_join(year_index_table, by="index_year")
+    dplyr::mutate(across(everything(), as.numeric)) %>%
+    dplyr::left_join(method_index_table, by="index_method") %>%
+    dplyr::left_join(sector_index_table, by="index_sector") %>%
+    dplyr::left_join(subnat_index_table, by=c("index_subnat")) %>%
+    dplyr::left_join(year_index_table, by="index_year")
   
   # Combine ---------------------------------------------------------
-  P_df <- left_join(P_mean, P_q,
-            by=c("index_method","index_subnat","index_year","Sector"))
+  P_df <- dplyr::left_join(P_mean, P_q)
   return(P_df)
 }

@@ -75,7 +75,7 @@ prov_plot <- ggcorrplot::ggcorrplot(corr_prov,
 corr_plots <- ggpubr::ggarrange(country_plot, prov_plot, labels = "AUTO")
 ggsave(corr_plots, filename = paste0(vispath,'/parameter_plots/corr_plots.pdf'), height=12, width=15) 
 
-# Coreelations with more conservative prior 
+# Correlations with more conservative prior 
 
 fit_cons <- readRDS('results/JAGS/JAGS_model_MVN_NCP_kstar_SE_higherDF_Wishart.RDS')
 

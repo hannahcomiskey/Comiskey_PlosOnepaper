@@ -6,24 +6,54 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
 ```
+
 
 ## Introduction
 
-This is the vignette to recreate the analysis of 'Bayesian probabilistic projections of proportions with limited data: An application to subnational contraceptive method supply shares'.
+
+This vignette demonstrates how to reproduce the analysis from: “Bayesian probabilistic projections of proportions with limited data: An application to subnational contraceptive method supply shares.”
+
+The workflow uses the mcmsector package to:
+  1. Prepare and clean subnational family planning data
+  2. Construct spline bases and indexing needed for the model
+  3. Fit a hierarchical Bayesian JAGS model
+  4. Extract posterior samples of contraceptive method proportions
+  5. Summarise and visualise posterior estimates against the observed data
+
+Each section explains what the code is doing and how it contributes to the final output.
+
+## Load and explore the subnational data
+
+This section loads required libraries and prints a glimpse of the raw dataset included in the package. The subnat_bivar_data dataset contains subnational contraceptive method share data for multiple countries, sectors, and time periods.
 
 ```{r subnational data}
 library(dplyr)
 library(rjags)
 library(R2jags)
+library(tidyr)
+library(ggplot2)
+library(mcmsector)
 
 glimpse(subnat_bivar_data)
 ```
 
 ## Prepare data
 
-This function reads in the raw data, cleans the inputs and returns a list of inputs used in the JAGS model. The inputs include the splines, indexing and time sequence to estimate over.
+Before fitting the model, the raw survey input must be cleaned, harmonised across years, and mapped into the structure required by JAGS.
+What this step does:
+  1. Removes unusable or incomplete survey observations
+  2. Applies DEFT adjustments to account for survey design
+  3. Creates indices for: Country, subnational region contraceptive method and time period
+  4. Constructs B-spline basis matrices (B_ik) for each subnational region
+  6. Generates metadata used throughout the modelling workflow
+
+These steps are performed by two convenience functions: `clean_fp_source_data()` and `run_preprocessing_pipeline()`
 
 ```{r prepare data, echo=FALSE}
 
@@ -38,7 +68,10 @@ inputs <- run_preprocessing_pipeline(raw_df = data,
 
 ```
 
-# Run JAGS model
+## Transform observed proportions to the logit scale
+
+The JAGS model operates on logit-transformed proportions, as these lie on the real line and avoid boundary issues at 0 and 1. This section computes the logit of the public sector proportions and corresponding standard errors via the delta method.
+
 ```{r run JAGS model, echo=FALSE}
 mydata <- inputs$data[,c("Public", "Public.SE")]
 logit.data <- mydata %>%
@@ -46,10 +79,20 @@ logit.data <- mydata %>%
   mutate(logit.Public = log(Public/(1-Public)),
          logit.Public.Var = ((1/(Public*(1-Public)))^2)*Public.SE^2,
          logit.Public.SE = sqrt(logit.Public.Var))
-n_methods = c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills")
-M =  length(n_methods)
+n_method = c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills")
+M =  length(n_method)
 
 ```
+
+
+## Build JAGS model input list
+
+This step assembles all required components into a single list (inputdata) that JAGS can read. Components include:
+  1. Observed logit proportions and SEs
+  2. B-spline basis matrices
+  3. Dimensions of the model (methods, regions, years)
+  4. Matching indices linking observations to hierarchical levels
+  5. A prior covariance matrix `Omega` for method-level effects
 
 ```{r}
 ## The required data ------------------------------
@@ -71,6 +114,14 @@ inputdata <- list(y = as.vector(unlist(logit.data[,c("logit.Public")])), # using
                   matchyears = inputs$data$index_year)
 ```
 
+## Fit the Bayesian JAGS model
+
+We run the multivariate non-centered parameterisation (NCP) model with smooth splines (ncp_MVN_SEmodel_JAGS.txt). This model produces posterior samples for:
+  1. alpha_pms: method × subnational random effects
+  2. beta.k: spline coefficients
+  3. Covariance matrices for method-country and method-subnational random effects
+  4. A residual variance parameter sigma_delta
+
 ```{r}
 pars <- c( "alpha_pms", # required for P
           "inv.Sigma.alpha_cms",
@@ -83,11 +134,116 @@ model_path <- system.file("model", "ncp_MVN_SEmodel_JAGS.txt", package = "mcmsec
 mod <- jags.parallel(data=inputdata,
             parameters.to.save=pars,
             model.file = model_path,
-            n.iter = 80000,         # total number of iterations per chain
+            n.iter = 70000,         # total number of iterations per chain
             n.burnin = 10000,
-            n.thin=35)
+            n.thin=30)
 
 saveRDS(mod, file='JAGS_model_MVN_NCP_kstar_SE.RDS')
 
 ```
+
+## Set up indexing tables for summarisation
+
+These tables help convert JAGS indices back into meaningful labels (method, region, year, sector) when summarising posterior draws.
+
+```{r}
+method_index_table <- tibble(index_method = 1:length(n_method), Method = n_method)
+sector_index_table <- tibble(index_sector = 1:2, Sector = c('Public', 'Private'))
+
+all_years = seq(1990, 2030.5, by = 0.5)
+
+year_index_table <- tibble(average_year = all_years, index_year = 1:length(all_years))
+subnat_index_table <- inputs$data %>% select(Country, Region, index_country, index_subnat) %>% distinct()
+
+```
+
+## Extract posterior parameters
+
+We extract the `alpha_pms` and `beta_k` samples and package them into a format ready for transformation back to proportions.
+
+```{r}
+params <- extract_mcmsector_params(mod = readRDS('JAGS_model_MVN_NCP_kstar_SE.RDS'), 
+                                   n_method = length(n_methods),
+                                   n_subnat = length(inputs$meta$n_subnat))
+```
+
+## Simulate posterior proportions
+
+We reconstruct posterior samples of the public/private method proportions using:
+  1. Intercepts from alpha_pms
+  2. Spline predictions from beta_k
+  3. Logistic transformation back to the probability scale
+
+```{r}
+prop_samps <- simulate_posterior_proportions(alpha_pms = params$alpha_pms,
+                                           beta_k = params$beta_k,
+                                           B_ik = inputs$splines$B_ik,
+                                           n_method = length(n_methods),
+                                           n_subnat = length(inputs$meta$n_subnat),
+                                           all_years = seq(1990, 2030.5, by = 0.5),
+                                           n_samps = 4000)
+```
+
+## Summarise posterior draws
+
+We compute a tidy long-format table merged with indexing definitions and:
+  1. posterior means
+  2. 95% credible intervals
+
+This object can then be used for plotting and comparison with observed survey data.
+
+```{r}
+prop_summary <- summarise_posterior_proportions(P = prop_samps,
+                                                method_index_table = method_index_table,
+                                                sector_index_table = sector_index_table,
+                                                subnat_index_table = subnat_index_table,
+                                                year_index_table = year_index_table)
+
+```
+
+## Visualise the model estimates
+
+Below we illustrate how to reproduce the plots used in the paper. This example filters to Rwanda and four methods for clarity.
+The plot overlays the observed survey shares with 95% uncertainty, posterior mean trajectories and posterior predictive credible intervals.
+
+```{r}
+
+P_df<- inputs$data  %>%
+  select(Country, Region, Method, index_year, average_year, Public, Private) %>%
+  left_join(method_index_table) %>%
+  pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Observed')
+
+P_SEdf<- inputs$data  %>%
+  select(Country, Region, Method, index_year, average_year, Public.SE, Private.SE) %>%
+  left_join(method_index_table) %>%
+  pivot_longer(cols = c(Public.SE, Private.SE), names_to = 'Sector', values_to = 'SE') %>%
+  mutate(Sector = stringr::str_replace(Sector, '.SE', ''))
+
+P_df <- left_join(P_df, P_SEdf) %>%
+  rowwise() %>%
+  mutate(lower_95 = Observed - 2*SE,
+         upper_95 = Observed + 2*SE)
+
+
+rwanda_obs <- P_df %>% filter(Country=="Rwanda" & Method %in% c("Implants", "Injectables", "IUD", "OC Pills")) 
+rwanda_preds <- prop_summary %>% filter(Country=="Rwanda" & Method %in% c("Implants", "Injectables", "IUD", "OC Pills")  & average_year < 2027)
+
+ggplot() +
+  geom_point(data = rwanda_obs, aes(x=average_year, y=Observed, colour=Sector, pch=Sector)) +
+  geom_errorbar(data = rwanda_obs, aes(x=average_year, ymin=lower_95, ymax=upper_95, colour=Sector)) +
+  geom_line(data = rwanda_preds, aes(x=average_year, y=Mean, colour=Sector, lty=Sector)) +
+  geom_ribbon(data = rwanda_preds, aes(x=average_year, ymin=lower_95, ymax = upper_95, fill=Sector), alpha=0.2) +
+  theme_minimal() +
+  theme(title = element_text(size=20), axis.text.x = element_text(angle = 90), strip.text.x = element_text(size=20), strip.text.y = element_text(size=20), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +
+  theme(legend.position = "bottom", legend.title = element_text(size = 20), legend.text = element_text(size = 20))+
+  facet_grid(Region ~ Method)
+
+
+
+```
+
+
+
+
+
 

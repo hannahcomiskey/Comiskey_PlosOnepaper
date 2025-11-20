@@ -15,18 +15,17 @@
 #'
 #' @return A list containing:
 #' \describe{
-#'   \item{z}{A 4D array of logit-scale draws.}
 #'   \item{P}{A 5D array of public/private probabilities.}
 #' }
 #'
 #' @export
-simulate_posterior_proportions <- function( alpha_pms,
-                                            beta_k,
-                                            B_ik,
-                                            n_method,
-                                            n_subnat,
-                                            all_years,
-                                            n_samps = 4000) {
+simulate_posterior_proportions <- function(alpha_pms,
+                                           beta_k,
+                                           B_ik,
+                                           n_method,
+                                           n_subnat,
+                                           all_years,
+                                           n_samps = 4000) {
   
   n_years <- length(all_years)
   n_beta <- dim(B_ik)[3]
@@ -57,5 +56,5 @@ simulate_posterior_proportions <- function( alpha_pms,
     }
   }
   
-  return(list(z = z, P = P))
+  return(P)
 }
