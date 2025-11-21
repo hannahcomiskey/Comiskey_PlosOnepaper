@@ -36,7 +36,7 @@ simulate_posterior_proportions <- function(alpha_pms,
   for (p in seq_len(n_subnat)) {
     for (m in seq_len(n_method)) {
       
-      alpha_samp <- alpha_pms[ , grepl(sprintf("alpha_pms\\[%s,%s\\]", m, p),
+      alpha_samp <- alpha_pms[1:n_samps, grepl(sprintf("alpha_pms\\[%s,%s\\]", m, p),
                                        colnames(alpha_pms)) ]
       
       beta_samp <- beta_k[ , grepl(sprintf("beta.k\\[%s,%s,", m, p),
@@ -45,7 +45,7 @@ simulate_posterior_proportions <- function(alpha_pms,
       for (t in seq_len(n_years)) {
         
         # B.ik[p, t, ] %*% beta_samp[s, 1:n_beta] computed fast via matrix mult
-        xb <- rowSums(beta_samp[ , 1:n_beta, drop=FALSE] *
+        xb <- rowSums(beta_samp[1:n_samps, 1:n_beta, drop=FALSE] *
                         matrix(B_ik[p, t, ], nrow=n_samps, ncol=n_beta, byrow=TRUE))
         
         z[ , m, p, t] <- alpha_samp + xb

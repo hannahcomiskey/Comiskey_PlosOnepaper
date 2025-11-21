@@ -21,7 +21,7 @@ replace_small_or_missing_se <- function(df, deft_lookup, min_n = 20) {
   if (nrow(special) > 0) {
     special <- special %>%
       dplyr::filter(Public_n >= min_n | Private_n >= min_n) %>%
-      dplyr::left_join(deft_lookup %>% rename(average_year = Year))
+      dplyr::left_join(deft_lookup %>% dplyr::rename(average_year = Year))
     
     if(nrow(special)>0) {
       col_index <- which(colnames(special)=="Public.SE")-1 # column index before SE col

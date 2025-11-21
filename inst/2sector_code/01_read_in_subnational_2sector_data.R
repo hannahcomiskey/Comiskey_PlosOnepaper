@@ -66,8 +66,8 @@ SE_source_data_wide_X <- SE_source_data_wide_X %>%
 col_index <- which(colnames(SE_source_data_wide_X)=="Public.SE")-1 # column index before CM column, as CM=1
 load("data/DEFT_DHS_database.rda") 
 DEFT_data <- DEFT_DHS_database %>%
-  rename(average_year = Year)
-SE_source_data_wide_X <- SE_source_data_wide_X %>% left_join(DEFT_data)
+  dplyr::rename(average_year = Year)
+SE_source_data_wide_X <- SE_source_data_wide_X %>%  dplyr::left_join(DEFT_data)
 
 # # https://onlinestatbook.com/2/sampling_distributions/samp_dist_p.html
 

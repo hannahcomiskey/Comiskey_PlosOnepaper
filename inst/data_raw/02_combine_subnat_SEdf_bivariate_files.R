@@ -187,7 +187,7 @@ saveRDS(varcov, file = "data/SE_source_data_VARCOV_bivar_2022.RDS") # save the a
 
 # Read in the proprtions data
 SE_source_data <- readRDS("data/subnat_bivar_SE_source_data_20.RDS") %>%
-  rename(Public.SE = se.Public,
+  dplyr::rename(Public.SE = se.Public,
          Private.SE = se.Private) # Bivariate setting
 
 # Read in the additional area information for each country
@@ -237,7 +237,7 @@ SE_source_data_wide_X <- SE_source_data_wide_X %>%
   dplyr::filter(Public_n>=20 | Private_n >=20 ) # Remove small sample sizes (DHS has 10 units sampled per cluster as min., 20 as average)
 col_index <- which(colnames(SE_source_data_wide_X)=="Private.SE")-1 # column index before CM column, as CM=1
 DEFT_data <- readxl::read_xlsx("data/DEFT_DHS_database.xlsx") %>%
-  rename(average_year = Year)
+  dplyr::rename(average_year = Year)
 
 SE_source_data_wide_X <- SE_source_data_wide_X %>% left_join(DEFT_data)
 

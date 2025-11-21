@@ -28,7 +28,7 @@ add_index_variables <- function(df,
   
   # create country - subnat unique table
   country_subnat_tbl <- df %>%
-    ungroup() %>%
+    dplyr::ungroup() %>%
     dplyr::select(Country, Region) %>%
     dplyr::distinct() %>%
     dplyr::arrange(Country, Region) %>%

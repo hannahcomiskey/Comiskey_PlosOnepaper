@@ -161,9 +161,9 @@ subnat_index_table <- inputs$data %>% select(Country, Region, index_country, ind
 
 We extract the `alpha_pms` and `beta_k` samples and package them into a format ready for transformation back to proportions.
 
-```{r}
+```{r, eval=FALSE}
 params <- extract_mcmsector_params(mod = readRDS('JAGS_model_MVN_NCP_kstar_SE.RDS'), 
-                                   n_method = length(n_methods),
+                                   n_method = length(n_method),
                                    n_subnat = length(inputs$meta$n_subnat))
 ```
 
@@ -174,11 +174,11 @@ We reconstruct posterior samples of the public/private method proportions using:
   2. Spline predictions from beta_k
   3. Logistic transformation back to the probability scale
 
-```{r}
+```{r, eval=FALSE}
 prop_samps <- simulate_posterior_proportions(alpha_pms = params$alpha_pms,
                                            beta_k = params$beta_k,
                                            B_ik = inputs$splines$B_ik,
-                                           n_method = length(n_methods),
+                                           n_method = length(n_method),
                                            n_subnat = length(inputs$meta$n_subnat),
                                            all_years = seq(1990, 2030.5, by = 0.5),
                                            n_samps = 4000)
@@ -192,7 +192,7 @@ We compute a tidy long-format table merged with indexing definitions and:
 
 This object can then be used for plotting and comparison with observed survey data.
 
-```{r}
+```{r, eval=FALSE}
 prop_summary <- summarise_posterior_proportions(P = prop_samps,
                                                 method_index_table = method_index_table,
                                                 sector_index_table = sector_index_table,
@@ -206,7 +206,7 @@ prop_summary <- summarise_posterior_proportions(P = prop_samps,
 Below we illustrate how to reproduce the plots used in the paper. This example filters to Rwanda and four methods for clarity.
 The plot overlays the observed survey shares with 95% uncertainty, posterior mean trajectories and posterior predictive credible intervals.
 
-```{r}
+```{r, eval=FALSE}
 
 P_df<- inputs$data  %>%
   select(Country, Region, Method, index_year, average_year, Public, Private) %>%
@@ -237,7 +237,6 @@ ggplot() +
   theme(title = element_text(size=20), axis.text.x = element_text(angle = 90), strip.text.x = element_text(size=20), strip.text.y = element_text(size=20), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +
   theme(legend.position = "bottom", legend.title = element_text(size = 20), legend.text = element_text(size = 20))+
   facet_grid(Region ~ Method)
-
 
 
 ```

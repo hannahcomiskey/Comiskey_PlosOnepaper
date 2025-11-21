@@ -4,7 +4,6 @@
 #' Converts a 5D posterior draws array `P` into a tidy long data frame containing
 #' posterior means and 95% credible intervals for each sector, method, region,
 #' and year.
-#' @importFrom stats mean
 #' @importFrom stats quantile
 #' @param P A 5D array of posterior samples with dimensions:
 #'   (sample, sector, method, subnat, year).

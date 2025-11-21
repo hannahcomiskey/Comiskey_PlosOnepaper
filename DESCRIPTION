@@ -11,3 +11,26 @@ RoxygenNote: 7.3.3
 Depends: 
     R (>= 3.5)
 LazyData: true
+Imports:
+    haven,
+    purrr,
+    rvest,
+    survey,
+    stats,
+    openxlsx,
+    R2jags,
+    magrittr,
+    foreach,
+    tidyverse,
+    tidybayes,
+    runjags,
+    rjags,
+    rlang,
+    abind,
+    dplyr,
+    ggplot2,
+    plyr,
+    readxl,
+    stringr,
+    tibble,
+    tidyr

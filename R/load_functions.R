@@ -28,7 +28,7 @@ P_median_global_2files <- function(subnat_index_table,
   for(k in  1:length(time_index)) { # time loop
     for(j in 1:P_dims[3]) { # subnat
       for (r in 1:P_dims[2]) { # method
-        P_s_med[j,k,r] <- median(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]))
+        P_s_med[j,k,r] <- stats::median(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]))
       }
     }
   }
@@ -42,7 +42,7 @@ P_median_global_2files <- function(subnat_index_table,
   # for(k in 1:length(time_index)) { # time loop
   #   for(s in 1:P_dims[3]) { # subnat
   #     for (m in 1:P_dims[2]) { # method
-  #       P_s_med[k,m,s] <- median(Psamps[,m,s,time_index[k]])
+  #       P_s_med[k,m,s] <- stats::median(Psamps[,m,s,time_index[k]])
   #     }
   #   }
   # }
@@ -52,7 +52,7 @@ P_median_global_2files <- function(subnat_index_table,
   
   P_s_med <- P_s_med %>%
     group_by(index_method, index_subnat, index_year) %>%
-    # summarise(median_p = median(estimate)) %>%
+    # summarise(median_p = stats::median(estimate)) %>%
     dplyr::mutate(index_year = as.numeric(index_year)) %>%
     dplyr::mutate(index_method = as.numeric(index_method)) %>%
     dplyr::mutate(index_subnat = as.numeric(index_subnat)) %>%
@@ -61,14 +61,14 @@ P_median_global_2files <- function(subnat_index_table,
     dplyr::left_join(averageyear_index_table) %>%
     dplyr::mutate(Sector = sector_type)
   
-  P_Q <- array(dim=c(P_dims[3], length(time_index), P_dims[2], 4)) # subnat, time, method, quantile(95, 80)
+  P_Q <- array(dim=c(P_dims[3], length(time_index), P_dims[2], 4)) # subnat, time, method, stats::quantile(95, 80)
   
   # Create a table for storing individual true country public data
   for(k in  1:length(time_index)) { # time loop
     for(j in 1:P_dims[3]) { # subnat
       for (r in 1:P_dims[2]) { # method
-        P_Q[j,k,r, 1:2] <- as.vector(unlist(quantile(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]), prob=c(0.025, 0.975))))
-        P_Q[j,k,r, 3:4] <- as.vector(unlist(quantile(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]), prob=c(0.1, 0.9))))
+        P_Q[j,k,r, 1:2] <- as.vector(unlist(stats::quantile(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]), prob=c(0.025, 0.975))))
+        P_Q[j,k,r, 3:4] <- as.vector(unlist(stats::quantile(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]), prob=c(0.1, 0.9))))
       }
     }
   }
@@ -78,7 +78,7 @@ P_median_global_2files <- function(subnat_index_table,
   
   P_s_med <- P_Q %>%
     group_by(index_method, index_subnat, index_year) %>%
-    # summarise(median_p = median(estimate)) %>%
+    # summarise(median_p = stats::median(estimate)) %>%
     dplyr::mutate(index_year = as.numeric(index_year)) %>%
     dplyr::mutate(index_method = as.numeric(index_method)) %>%
     dplyr::mutate(index_subnat = as.numeric(index_subnat)) %>%
@@ -915,7 +915,7 @@ P_median_calc_sectors <- function(subnat_index_table, method_index_table, sector
     for(j in 1:P_dims[4]) { # subnat
       for (r in 1:P_dims[3]) { # method
         for (i in 1:P_dims[2]) { # sector
-          P_s_med[j,k,r,i] <- median(P_samp[,i,r,j,time_index])
+          P_s_med[j,k,r,i] <- stats::median(P_samp[,i,r,j,time_index])
         }
       }
     }
@@ -958,7 +958,7 @@ iq95_P_calc_sectors <- function(subnat_index_table, method_index_table, sector_i
     for(j in 1:P_dims[4]) {
       for (r in 1:P_dims[3]) { # Create a table for storing individual true country public data
         for (i in 1:P_dims[2]) {
-          upper_P_s_med[j,t,r,i] <- quantile(P_samp[,i,r,j,time_index], probs = 0.975, na.rm=TRUE)
+          upper_P_s_med[j,t,r,i] <- stats::quantile(P_samp[,i,r,j,time_index], probs = 0.975, na.rm=TRUE)
         }
       } 
     }
@@ -977,7 +977,7 @@ iq95_P_calc_sectors <- function(subnat_index_table, method_index_table, sector_i
     for(j in 1:P_dims[4]) {
       for (r in 1:P_dims[3]) { # Create a table for storing individual true country public data
         for (i in 1:P_dims[2]) {
-          lower_P_s_med[j,t,r,i] <- quantile(P_samp[,i,r,j,time_index], probs = 0.025, na.rm=TRUE)
+          lower_P_s_med[j,t,r,i] <- stats::quantile(P_samp[,i,r,j,time_index], probs = 0.025, na.rm=TRUE)
         }
       } 
     }
@@ -1022,7 +1022,7 @@ iq80_P_calc_sectors <- function(subnat_index_table, method_index_table, sector_i
     for(j in 1:P_dims[4]) {
       for (r in 1:P_dims[3]) { # Create a table for storing individual true country public data
         for (i in 1:P_dims[2]) {
-          upper_P_s_med[j,t,r,i] <- quantile(P_samp[,i,r,j,time_index], probs = 0.9, na.rm=TRUE)
+          upper_P_s_med[j,t,r,i] <- stats::quantile(P_samp[,i,r,j,time_index], probs = 0.9, na.rm=TRUE)
         }
       } 
     }
@@ -1041,7 +1041,7 @@ iq80_P_calc_sectors <- function(subnat_index_table, method_index_table, sector_i
     for(j in 1:P_dims[4]) {
       for (r in 1:P_dims[3]) { # Create a table for storing individual true country public data
         for (i in 1:P_dims[2]) {
-          lower_P_s_med[j,t,r,i] <- quantile(P_samp[,i,r,j,time_index], probs = 0.1, na.rm=TRUE)
+          lower_P_s_med[j,t,r,i] <- stats::quantile(P_samp[,i,r,j,time_index], probs = 0.1, na.rm=TRUE)
         }
       } 
     }
@@ -1148,7 +1148,7 @@ iq80_P_predictive_samp_sectors <- function(country_index_table, method_index_tab
     for(j in 1:P_dims[4]) {
       for (r in 1:P_dims[3]) { # Create a table for storing individual true country public data
         for (i in 1:P_dims[2]) {
-          upper_P_s_med[j,k,r,i] <- quantile(P_samp[,i,r,j,k], probs = 0.9, na.rm = TRUE)
+          upper_P_s_med[j,k,r,i] <- stats::quantile(P_samp[,i,r,j,k], probs = 0.9, na.rm = TRUE)
         }
       } 
     }
@@ -1161,7 +1161,7 @@ iq80_P_predictive_samp_sectors <- function(country_index_table, method_index_tab
     for(j in 1:P_dims[4]) {
       for (r in 1:P_dims[3]) { # Create a table for storing individual true country public data
         for (i in 1:P_dims[2]) {
-          lower_P_s_med[j,k,r,i] <- quantile(P_samp[,i,r,j,k], probs = 0.1, na.rm = TRUE)
+          lower_P_s_med[j,k,r,i] <- stats::quantile(P_samp[,i,r,j,k], probs = 0.1, na.rm = TRUE)
         }
       } 
     }
@@ -1697,7 +1697,7 @@ P_median_global_2files <- function(subnat_index_table,
   for(k in  1:length(time_index)) { # time loop
     for(j in 1:P_dims[3]) { # subnat
       for (r in 1:P_dims[2]) { # method
-        P_s_med[j,k,r] <- median(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]))
+        P_s_med[j,k,r] <- stats::median(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]))
       }
     }
   }
@@ -1711,7 +1711,7 @@ P_median_global_2files <- function(subnat_index_table,
   # for(k in 1:length(time_index)) { # time loop
   #   for(s in 1:P_dims[3]) { # subnat
   #     for (m in 1:P_dims[2]) { # method
-  #       P_s_med[k,m,s] <- median(Psamps[,m,s,time_index[k]])
+  #       P_s_med[k,m,s] <- stats::median(Psamps[,m,s,time_index[k]])
   #     }
   #   }
   # }
@@ -1721,7 +1721,7 @@ P_median_global_2files <- function(subnat_index_table,
 
   P_s_med <- P_s_med %>%
     group_by(index_method, index_subnat, index_year) %>%
-   # summarise(median_p = median(estimate)) %>%
+   # summarise(median_p = stats::median(estimate)) %>%
     dplyr::mutate(index_year = as.numeric(index_year)) %>%
     dplyr::mutate(index_method = as.numeric(index_method)) %>%
     dplyr::mutate(index_subnat = as.numeric(index_subnat)) %>%
@@ -1736,8 +1736,8 @@ P_median_global_2files <- function(subnat_index_table,
   for(k in  1:length(time_index)) { # time loop
     for(j in 1:P_dims[3]) { # subnat
       for (r in 1:P_dims[2]) { # method
-        P_Q[j,k,r, 1:2] <- as.vector(unlist(quantile(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]), prob=c(0.025, 0.975))))
-        P_Q[j,k,r, 3:4] <- as.vector(unlist(quantile(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]), prob=c(0.1, 0.9))))
+        P_Q[j,k,r, 1:2] <- as.vector(unlist(stats::quantile(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]), prob=c(0.025, 0.975))))
+        P_Q[j,k,r, 3:4] <- as.vector(unlist(stats::quantile(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]), prob=c(0.1, 0.9))))
       }
     }
   }
@@ -1747,7 +1747,7 @@ P_median_global_2files <- function(subnat_index_table,
 
   P_s_med <- P_Q %>%
     group_by(index_method, index_subnat, index_year) %>%
-    # summarise(median_p = median(estimate)) %>%
+    # summarise(median_p = stats::median(estimate)) %>%
     dplyr::mutate(index_year = as.numeric(index_year)) %>%
     dplyr::mutate(index_method = as.numeric(index_method)) %>%
     dplyr::mutate(index_subnat = as.numeric(index_subnat)) %>%
@@ -1796,7 +1796,7 @@ P_sd_global_2files <- function(subnat_index_table,
   
   P_s_med <- P_s_med %>%
     group_by(index_method, index_subnat, index_year) %>%
-    # summarise(median_p = median(estimate)) %>%
+    # summarise(median_p = stats::median(estimate)) %>%
     dplyr::mutate(index_year = as.numeric(index_year)) %>%
     dplyr::mutate(index_method = as.numeric(index_method)) %>%
     dplyr::mutate(index_subnat = as.numeric(index_subnat)) %>%
@@ -1837,7 +1837,7 @@ P_median_global <- function(subnat_index_table,
   for(k in 1:length(time_index)) { # time loop
     for(s in 1:P_dims[3]) { # subnat
       for (m in 1:P_dims[2]) { # method
-        P_s_med[k,m,s] <- median(Psamps[,m,s,time_index[k]])
+        P_s_med[k,m,s] <- stats::median(Psamps[,m,s,time_index[k]])
       }
     }
   }
@@ -1854,14 +1854,14 @@ P_median_global <- function(subnat_index_table,
     dplyr::left_join(averageyear_index_table) %>%
     dplyr::mutate(Sector = sector_type)
   
-  P_Q <- array(dim=c(length(time_index),P_dims[2],P_dims[3], 4)) # subnat, time, method, quantile(95, 80)
+  P_Q <- array(dim=c(length(time_index),P_dims[2],P_dims[3], 4)) # subnat, time, method, stats::quantile(95, 80)
   
   # Create a table for storing individual true country public data
   for(k in  1:length(time_index)) { # time loop
     for(j in 1:P_dims[3]) { # subnat
       for (r in 1:P_dims[2]) { # method
-        P_Q[k,r,j, 1:2] <- as.vector(unlist(quantile(Psamps[,r,j,time_index[k]], prob=c(0.025, 0.975))))
-        P_Q[k,r,j, 3:4] <- as.vector(unlist(quantile(Psamps[,r,j,time_index[k]], prob=c(0.1, 0.9))))
+        P_Q[k,r,j, 1:2] <- as.vector(unlist(stats::quantile(Psamps[,r,j,time_index[k]], prob=c(0.025, 0.975))))
+        P_Q[k,r,j, 3:4] <- as.vector(unlist(stats::quantile(Psamps[,r,j,time_index[k]], prob=c(0.1, 0.9))))
       }
     }
   } 
@@ -1904,26 +1904,26 @@ P_quantiles_global <- function(subnat_index_table,
   # P_dims <- dim(Psamps)
   
   # #### P median
-  # P_s_med <- array(dim=c(length(time_index),P_dims[2],P_dims[3],4)) # method, year, subnat, quantile(95, 80)
+  # P_s_med <- array(dim=c(length(time_index),P_dims[2],P_dims[3],4)) # method, year, subnat, stats::quantile(95, 80)
   # 
   # # Create a table for storing individual true country public data 
   # for(k in 1:length(time_index)) { # time loop
   #   for(s in 1:P_dims[3]) { # subnat
   #     for (m in 1:P_dims[2]) { # method
-  #       P_s_med[k,m,s,1:2] <- as.vector(unlist(quantile(Psamps[,m,s,time_index[k]], prob=c(0.025, 0.975))))
-  #       P_s_med[k,m,s,3:4] <- as.vector(unlist(quantile(Psamps[,m,s,time_index[k]], prob=c(0.1, 0.9))))
+  #       P_s_med[k,m,s,1:2] <- as.vector(unlist(stats::quantile(Psamps[,m,s,time_index[k]], prob=c(0.025, 0.975))))
+  #       P_s_med[k,m,s,3:4] <- as.vector(unlist(stats::quantile(Psamps[,m,s,time_index[k]], prob=c(0.1, 0.9))))
   #     } 
   #   }
   # }
   
-  P_s_med <- array(dim=c(P_dims[3], length(time_index), P_dims[2], 4)) # subnat, time, method, quantile(95, 80)
+  P_s_med <- array(dim=c(P_dims[3], length(time_index), P_dims[2], 4)) # subnat, time, method, stats::quantile(95, 80)
   
   # Create a table for storing individual true country public data
   for(k in  1:length(time_index)) { # time loop
     for(j in 1:P_dims[3]) { # subnat
       for (r in 1:P_dims[2]) { # method
-        P_s_med[j,k,r, 1:2] <- as.vector(unlist(quantile(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]), prob=c(0.025, 0.975))))
-        P_s_med[j,k,r, 3:4] <- as.vector(unlist(quantile(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]), prob=c(0.1, 0.9))))
+        P_s_med[j,k,r, 1:2] <- as.vector(unlist(stats::quantile(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]), prob=c(0.025, 0.975))))
+        P_s_med[j,k,r, 3:4] <- as.vector(unlist(stats::quantile(c(mod_P1[,r,j,time_index[k]], mod_P2[,r,j,time_index[k]]), prob=c(0.1, 0.9))))
       }
     }
   } 
@@ -1933,7 +1933,7 @@ P_quantiles_global <- function(subnat_index_table,
   
   P_s_med <- P_s_med %>%
     group_by(index_method, index_subnat, index_year) %>%
-    # summarise(median_p = median(estimate)) %>%
+    # summarise(median_p = stats::median(estimate)) %>%
     dplyr::mutate(index_year = as.numeric(index_year)) %>%
     dplyr::mutate(index_method = as.numeric(index_method)) %>%
     dplyr::mutate(index_subnat = as.numeric(index_subnat)) %>%
@@ -1975,29 +1975,29 @@ get_alpha <- function(mymod, modtype, subnat_index_table, method_index_table, se
   subnatalpha_samps$col_details <- gsub(".*[[]([^.]+)[]].*", "\\1", subnatalpha_samps$col_name) # extract indexing
   
   subnatalpha_samps <- subnatalpha_samps %>%
-    rowwise() %>%
-    mutate(index_sector = as.numeric(unlist(strsplit(col_details, ","))[1]),
+    dplyr::rowwise() %>%
+    dplyr::mutate(index_sector = as.numeric(unlist(strsplit(col_details, ","))[1]),
            index_method = as.numeric(unlist(strsplit(col_details, ","))[2]),
            index_subnat = as.numeric(unlist(strsplit(col_details, ","))[3])) %>%
-    left_join(subnat_index_table) %>%
-    left_join(method_index_table) %>%
-    left_join(sector_index_table) %>%
-    select(Country, Region, Method, Sector, estimate) %>%
-    mutate(Model = modtype, component = "Posterior")
+    dplyr::left_join(subnat_index_table) %>%
+    dplyr::left_join(method_index_table) %>%
+    dplyr::left_join(sector_index_table) %>%
+    dplyr::select(Country, Region, Method, Sector, estimate) %>%
+    dplyr::mutate(Model = modtype, component = "Posterior")
   
   subnatalpha_samps_median <- subnatalpha_samps %>%
-    group_by(Sector, Method, Region) %>%
-    summarise(median_alpha = median(estimate, na.rm = TRUE)) 
+    dplyr::group_by(Sector, Method, Region) %>%
+    dplyr::summarise(median_alpha = stats::median(estimate, na.rm = TRUE)) 
   
   subnatalpha_samps_sd <- subnatalpha_samps %>%
-    group_by(Sector, Method, Region) %>%
-    summarise(sd_alpha = sd(estimate, na.rm = TRUE)) 
+    dplyr::group_by(Sector, Method, Region) %>%
+    dplyr::summarise(sd_alpha = sd(estimate, na.rm = TRUE)) 
   
   subnatalpha_samps_95CI <- left_join(subnatalpha_samps_median, subnatalpha_samps_sd)  %>%
-    rowwise() %>%
-    mutate(upper_95 = median_alpha+2*sd_alpha, 
+    dplyr::rowwise() %>%
+    dplyr::mutate(upper_95 = median_alpha+2*sd_alpha, 
            lower_95 =  median_alpha-2*sd_alpha) %>%
-    mutate(Model = modtype)
+    dplyr::mutate(Model = modtype)
   
   return(list( alpha_samps = subnatalpha_samps, alpha_summary = subnatalpha_samps_95CI))
 }

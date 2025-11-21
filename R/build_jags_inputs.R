@@ -19,7 +19,7 @@ build_jags_inputs <- function(df, all_years = seq(1990, 2030.5, by = 0.5)) {
   
   # unique country-subnat mapping and counts
   index_country_subnat_tbl <- df %>%
-    group_by(Country, Region) %>% 
+    dplyr::group_by(Country, Region) %>% 
     dplyr::select(Country, Region, index_country, index_subnat) %>%
     dplyr::distinct() %>%
     dplyr::arrange(index_country, index_subnat)
