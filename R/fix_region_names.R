@@ -10,7 +10,7 @@
 #' @export
 #'
 #' @examples
-#' clean <- fix_region_names(raw_df)
+#' clean <- fix_region_names(mcmsector::subnat_bivar_data)
 fix_region_names <- function(df) {
   
   fix_country <- function(data, country, replacements) {

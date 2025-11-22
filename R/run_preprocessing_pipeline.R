@@ -9,9 +9,9 @@
 #'  - build spline bases
 #'
 #' This returns a list containing cleaned data, metadata and spline objects.
-#'
-#' @param raw_df Raw FP source data frame (unindexed).
-#' @param area_classification A country/area classification table (e.g. mcmsupply data).
+#' @importFrom magrittr %>%
+#' @param raw_df Raw FP source data frame (unindexed) (e.g. mcmsector::subnat_bivar_data) .
+#' @param area_classification A country/area classification table (e.g. mcmsector::Country_and_area_classification_inclFP2020).
 #' @param deft_lookup Optional DEFT lookup (passed through to SE cleaning if used earlier).
 #' @param methods Character vector of methods.
 #' @param all_years Numeric vector of years to index across.
@@ -27,16 +27,15 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' out <- run_preprocessing_pipeline(raw_df = FP_source_data_wide,
-#'                                   area_classification = mcmsupply::Country_and_area_classification)
+#' out <- run_preprocessing_pipeline(raw_df = mcmsector::subnat_bivar_data ,
+#'                                   area_classification = mcmsector::Country_and_area_classification_inclFP2020)
 #' }
 run_preprocessing_pipeline <- function(raw_df,
                                        area_classification,
                                        deft_lookup = NULL,
                                        methods = c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills"),
                                        all_years = seq(1990, 2030.5, by = 0.5),
-                                       nseg = 10,
-                                       min_n = 20) {
+                                       nseg = 10) {
   
   # 1. standardise country names & attach super-region
   df1 <- standardize_country_names(raw_df, area_classification)

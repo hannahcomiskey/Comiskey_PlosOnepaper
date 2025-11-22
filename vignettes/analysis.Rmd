@@ -1,8 +1,11 @@
 ---
-title: "Plos_One_paper_analysis"
+title: "Using mcmsector"
 author: "Hannah Comiskey"
-date: "2025-11-19"
-output: html_document
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Using mcmsector}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include=FALSE}

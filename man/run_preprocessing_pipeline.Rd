@@ -10,14 +10,13 @@ run_preprocessing_pipeline(
   deft_lookup = NULL,
   methods = c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills"),
   all_years = seq(1990, 2030.5, by = 0.5),
-  nseg = 10,
-  min_n = 20
+  nseg = 10
 )
 }
 \arguments{
-\item{raw_df}{Raw FP source data frame (unindexed).}
+\item{raw_df}{Raw FP source data frame (unindexed) (e.g. mcmsector::subnat_bivar_data) .}
 
-\item{area_classification}{A country/area classification table (e.g. mcmsupply data).}
+\item{area_classification}{A country/area classification table (e.g. mcmsector::Country_and_area_classification_inclFP2020).}
 
 \item{deft_lookup}{Optional DEFT lookup (passed through to SE cleaning if used earlier).}
 
@@ -50,7 +49,7 @@ This returns a list containing cleaned data, metadata and spline objects.
 }
 \examples{
 \dontrun{
-out <- run_preprocessing_pipeline(raw_df = FP_source_data_wide,
-                                  area_classification = mcmsupply::Country_and_area_classification)
+out <- run_preprocessing_pipeline(raw_df = mcmsector::subnat_bivar_data ,
+                                  area_classification = mcmsector::Country_and_area_classification_inclFP2020)
 }
 }

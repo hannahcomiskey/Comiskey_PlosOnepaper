@@ -1,5 +1,5 @@
 #' Summarise posterior probability samples into mean and quantiles
-#'
+#' @importFrom dplyr across everything
 #' @description
 #' Converts a 5D posterior draws array `P` into a tidy long data frame containing
 #' posterior means and 95% credible intervals for each sector, method, region,
@@ -14,7 +14,6 @@
 #'
 #' @return A tibble with posterior mean, lower 95%, and upper 95% intervals.
 #' @export
-#'
 #' @examples
 #' \dontrun{
 #' df <- summarise_posterior_proportions(P, method_tbl, sector_tbl, subnat_tbl, year_tbl)
@@ -31,7 +30,7 @@ summarise_posterior_proportions <- function( P,
   colnames(P_mean) <- c("index_method", "index_subnat", "index_year", "Public", "Private")
   
   P_mean <- P_mean %>%
-    dplyr::mutate(across(everything(), as.numeric)) %>%
+    dplyr::mutate(dplyr::across(dplyr::everything(), as.numeric)) %>%
     tidyr::pivot_longer(cols = c("Public", "Private"), names_to="Sector", values_to="Mean") %>%
     dplyr::left_join(method_index_table, by="index_method")
   
@@ -42,7 +41,7 @@ summarise_posterior_proportions <- function( P,
                      "lower_95", "upper_95")
   
   P_q <- P_q %>%
-    dplyr::mutate(across(everything(), as.numeric)) %>%
+    dplyr::mutate(dplyr::across(dplyr::everything(), as.numeric)) %>%
     dplyr::left_join(method_index_table, by="index_method") %>%
     dplyr::left_join(sector_index_table, by="index_sector") %>%
     dplyr::left_join(subnat_index_table, by=c("index_subnat")) %>%

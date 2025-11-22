@@ -1,0 +1,15 @@
+# RStudio / R session files
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# macOS cruft
+.DS_Store
+
+# Local scratch files
+.RDataTmp
+.RDataTmp1
+
+# Ignore RStudio project file if present
+mcmsector.Rproj

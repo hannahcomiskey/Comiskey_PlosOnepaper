@@ -32,7 +32,7 @@
 #' }
 #'
 #' @export
-#'
+#' @importFrom magrittr %>%
 #' @examples
 #' \dontrun{
 #' cleaned <- clean_fp_source_data(subnat_raw, deft_db)
