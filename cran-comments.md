@@ -1,5 +1,30 @@
-# 
-══ Results ════════════════════════════════════════════════════════════════════════════════════════════════════════
-Duration: 66.9 s
+# Version 1.0.0
+(A) Test results
+Duration: 23s
 
-[ FAIL 0 | WARN 0 | SKIP 0 | PASS 9 ]
+❯ checking Rd line widths ... NOTE
+  Rd file 'run_preprocessing_pipeline.Rd':
+    \examples lines wider than 100 characters:
+                                         area_classification = mcmsector::Country_and_area_classification_inclFP2020)
+  
+  These lines will be truncated in the PDF manual.
+
+0 errors ✔ | 0 warnings ✔ | 1 note ✖
+
+This NOTE is due to long example lines and does not affect functionality.
+All examples run successfully.
+
+(B) Test environments
+
+1. macOS Sonoma 14.7.1, R 4.5.1
+  R CMD check --as-cran: 
+  0 errors, 0 warnings, 1 note
+2. Windows (win-builder, R-release)
+  Installation time in seconds: 8
+  Check time in seconds: 68
+  0 errors, 0 warnings, 1 note
+
+(C) Additional comments
+
+This is a new submission to CRAN.
+
