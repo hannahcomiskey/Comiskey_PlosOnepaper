@@ -13,3 +13,5 @@
 
 # Ignore RStudio project file if present
 mcmsector.Rproj
+/doc/
+/Meta/

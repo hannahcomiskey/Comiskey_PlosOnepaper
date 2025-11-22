@@ -10,6 +10,8 @@
 ^\.github$
 ^badge$
 ^CRAN-SUBMISSION$
+^vignettes$
+^LICENSE.md
 
 # Extra ignores to clean up check notes
 ^\.DS_Store$
@@ -26,3 +28,4 @@
 
 ^\.git$
 ^\.gitignore$
+^Meta$
