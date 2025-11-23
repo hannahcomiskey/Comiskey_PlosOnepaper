@@ -28,3 +28,17 @@ All examples run successfully.
 
 This is a new submission to CRAN.
 
+(D) Notes
+
+Possibly misspelled words in DESCRIPTION
+“subnational” (22:5, 24:46)
+This is not a spelling mistake. The term is intentionally used and is correct in this context.
+
+`\examples` lines wider than 100 characters
+The example line refers to stored data:
+area_classification = mcmsector::Country_and_area_classification_inclFP2020
+
+It is written on a single line for user clarity, and wrapping it would reduce readability.
+This NOTE is expected and can be safely ignored.
+
+No other issues were reported.
