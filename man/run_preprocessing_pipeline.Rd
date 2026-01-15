@@ -49,7 +49,7 @@ This returns a list containing cleaned data, metadata and spline objects.
 }
 \examples{
 \dontrun{
-out <- run_preprocessing_pipeline(raw_df = mcmsector::subnat_bivar_data ,
-                                  area_classification = mcmsector::Country_and_area_classification_inclFP2020)
+out <- run_preprocessing_pipeline(raw_df = subnat_bivar_data , 
+            area_classification = Country_and_area_classification_inclFP2020)
 }
 }

@@ -42,6 +42,7 @@ library(R2jags)
 library(tidyr)
 library(ggplot2)
 library(mcmsector)
+library(bayesplot)
 
 glimpse(subnat_bivar_data)
 ```
@@ -144,6 +145,26 @@ mod <- jags.parallel(data=inputdata,
 saveRDS(mod, file='JAGS_model_MVN_NCP_kstar_SE.RDS')
 
 ```
+
+## Model checking 
+
+We assess model fit and MCMC convergence using a combination of graphical diagnostics and summary statistics. The `plot()` method applied to the fitted JAGS object produces standard convergence diagnostics, including traceplots and R-hat statistics (Gelman–Rubin diagnostics), which are used to assess mixing across chains and identify potential non-convergence. In addition, the model summary is inspected directly to examine posterior means, credible intervals, effective sample sizes, and the number of effective parameters.
+
+To further evaluate sampling behaviour for selected parameters, we generate traceplots using the `bayesplot` package. Posterior draws are extracted from the JAGS output array and visualised for a subset of representative parameters, including both indexed latent effects and global variance components. These traceplots provide a direct visual assessment of chain mixing, stationarity, and autocorrelation, and are particularly useful for diagnosing convergence in high-dimensional hierarchical models.
+
+```{r}
+# R hat values and number of effective params
+plot(mod)
+View(mod$BUGSoutput$summary)
+
+# traceplots
+mcmc_trace(mod$BUGSoutput$sims.array,
+           pars = c("alpha_pms[4,55]",
+                                "beta.k[4,78,1]",
+                                "sigma_delta"))
+
+```
+
 
 ## Set up indexing tables for summarisation
 
