@@ -1,9 +1,9 @@
 ---
-title: "Using mcmsector"
+title: "Using the mcmsector R package"
 author: "Hannah Comiskey"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Using mcmsector}
+  %\VignetteIndexEntry{Using the mcmsector R package}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -36,14 +36,6 @@ Each section explains what the code is doing and how it contributes to the final
 This section loads required libraries and prints a glimpse of the raw dataset included in the package. The subnat_bivar_data dataset contains subnational contraceptive method share data for multiple countries, sectors, and time periods.
 
 ```{r subnational data}
-library(dplyr)
-library(rjags)
-library(R2jags)
-library(tidyr)
-library(ggplot2)
-library(mcmsector)
-library(bayesplot)
-
 glimpse(subnat_bivar_data)
 ```
 
@@ -61,10 +53,10 @@ These steps are performed by two convenience functions: `clean_fp_source_data()`
 
 ```{r prepare data, echo=FALSE}
 
-data <- clean_fp_source_data(mcmsector::subnat_bivar_data, deft_lookup = mcmsector::DEFT_DHS_database)
+data <- clean_fp_source_data(subnat_bivar_data, deft_lookup = DEFT_DHS_database)
 
 inputs <- run_preprocessing_pipeline(raw_df = data, 
-                                     area_classification = mcmsector::Country_and_area_classification_inclFP2020,
+                                     area_classification = Country_and_area_classification_inclFP2020,
                                      methods = c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills"),
                                      all_years = seq(1990, 2030.5, by = 0.5),
                                      nseg = 10)
@@ -80,7 +72,7 @@ The JAGS model operates on logit-transformed proportions, as these lie on the re
 mydata <- inputs$data[,c("Public", "Public.SE")]
 logit.data <- mydata %>%
   rowwise() %>%
-  mutate(logit.Public = log(Public/(1-Public)),
+  dplyr::mutate(logit.Public = log(Public/(1-Public)),
          logit.Public.Var = ((1/(Public*(1-Public)))^2)*Public.SE^2,
          logit.Public.SE = sqrt(logit.Public.Var))
 n_method = c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills")
@@ -92,7 +84,7 @@ M =  length(n_method)
 ## Build JAGS model input list
 
 This step assembles all required components into a single list (inputdata) that JAGS can read. Components include:
-  1. Observed logit proportions and SEs
+  1. Observed logit proportions and standard errors
   2. B-spline basis matrices
   3. Dimensions of the model (methods, regions, years)
   4. Matching indices linking observations to hierarchical levels
@@ -135,7 +127,7 @@ pars <- c( "alpha_pms", # required for P
 
 model_path <- system.file("model", "ncp_MVN_SEmodel_JAGS.txt", package = "mcmsector")
 
-mod <- jags.parallel(data=inputdata,
+mod <- R2jags::jags.parallel(data=inputdata,
             parameters.to.save=pars,
             model.file = model_path,
             n.iter = 70000,         # total number of iterations per chain
@@ -150,15 +142,15 @@ saveRDS(mod, file='JAGS_model_MVN_NCP_kstar_SE.RDS')
 
 We assess model fit and MCMC convergence using a combination of graphical diagnostics and summary statistics. The `plot()` method applied to the fitted JAGS object produces standard convergence diagnostics, including traceplots and R-hat statistics (Gelman–Rubin diagnostics), which are used to assess mixing across chains and identify potential non-convergence. In addition, the model summary is inspected directly to examine posterior means, credible intervals, effective sample sizes, and the number of effective parameters.
 
-To further evaluate sampling behaviour for selected parameters, we generate traceplots using the `bayesplot` package. Posterior draws are extracted from the JAGS output array and visualised for a subset of representative parameters, including both indexed latent effects and global variance components. These traceplots provide a direct visual assessment of chain mixing, stationarity, and autocorrelation, and are particularly useful for diagnosing convergence in high-dimensional hierarchical models.
+To further evaluate sampling behaviour for dplyr::selected parameters, we generate traceplots using the `bayesplot` package. Posterior draws are extracted from the JAGS output array and visualized for a subset of representative parameters, including both indexed latent effects and global variance components. These traceplots provide a direct visual assessment of chain mixing, stationarity, and autocorrelation, and are particularly useful for diagnosing convergence in high-dimensional hierarchical models.
 
 ```{r}
 # R hat values and number of effective params
 plot(mod)
-View(mod$BUGSoutput$summary)
+head(mod$BUGSoutput$summary)
 
 # traceplots
-mcmc_trace(mod$BUGSoutput$sims.array,
+bayesplot::mcmc_trace(mod$BUGSoutput$sims.array,
            pars = c("alpha_pms[4,55]",
                                 "beta.k[4,78,1]",
                                 "sigma_delta"))
@@ -166,18 +158,22 @@ mcmc_trace(mod$BUGSoutput$sims.array,
 ```
 
 
-## Set up indexing tables for summarisation
+## Set up indexing tables for summarization
 
-These tables help convert JAGS indices back into meaningful labels (method, region, year, sector) when summarising posterior draws.
+These tables help convert JAGS indices back into meaningful labels (method, region, year, sector) when summarizing the posterior draws.
 
 ```{r}
-method_index_table <- tibble(index_method = 1:length(n_method), Method = n_method)
-sector_index_table <- tibble(index_sector = 1:2, Sector = c('Public', 'Private'))
+method_index_table <- tibble(index_method = 1:length(n_method),
+                             Method = n_method)
+sector_index_table <- tibble(index_sector = 1:2,
+                             Sector = c('Public', 'Private'))
 
 all_years = seq(1990, 2030.5, by = 0.5)
 
-year_index_table <- tibble(average_year = all_years, index_year = 1:length(all_years))
-subnat_index_table <- inputs$data %>% select(Country, Region, index_country, index_subnat) %>% distinct()
+year_index_table <- tibble::tibble(average_year = all_years,
+                                   index_year = 1:length(all_years))
+subnat_index_table <- inputs$data %>% 
+  dplyr::select(Country, Region, index_country, index_subnat) %>% distinct()
 
 ```
 
@@ -227,40 +223,50 @@ prop_summary <- summarise_posterior_proportions(P = prop_samps,
 
 ## Visualise the model estimates
 
-Below we illustrate how to reproduce the plots used in the paper. This example filters to Rwanda and four methods for clarity.
+Below we illustrate how to reproduce the plots used in the paper. This example dplyr::filters to Rwanda and four methods for clarity.
 The plot overlays the observed survey shares with 95% uncertainty, posterior mean trajectories and posterior predictive credible intervals.
 
 ```{r, eval=FALSE}
 
 P_df<- inputs$data  %>%
-  select(Country, Region, Method, index_year, average_year, Public, Private) %>%
-  left_join(method_index_table) %>%
-  pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Observed')
+  dplyr::select(Country, Region, Method, index_year, average_year, Public, Private) %>%
+  dplyr::left_join(method_index_table) %>%
+  tidyr::pivot_longer(cols = c(Public, Private), names_to = 'Sector', values_to = 'Observed')
 
 P_SEdf<- inputs$data  %>%
-  select(Country, Region, Method, index_year, average_year, Public.SE, Private.SE) %>%
-  left_join(method_index_table) %>%
-  pivot_longer(cols = c(Public.SE, Private.SE), names_to = 'Sector', values_to = 'SE') %>%
-  mutate(Sector = stringr::str_replace(Sector, '.SE', ''))
+  dplyr::select(Country, Region, Method, index_year, average_year, Public.SE, Private.SE) %>%
+  dplyr::left_join(method_index_table) %>%
+  tidyr::pivot_longer(cols = c(Public.SE, Private.SE), names_to = 'Sector', values_to = 'SE') %>%
+  dplyr::mutate(Sector = stringr::str_replace(Sector, '.SE', ''))
 
-P_df <- left_join(P_df, P_SEdf) %>%
+P_df <- dplyr::left_join(P_df, P_SEdf) %>%
   rowwise() %>%
-  mutate(lower_95 = Observed - 2*SE,
-         upper_95 = Observed + 2*SE)
+  dplyr::mutate(lower_95 = Observed - 2*SE,
+                upper_95 = Observed + 2*SE)
 
 
-rwanda_obs <- P_df %>% filter(Country=="Rwanda" & Method %in% c("Implants", "Injectables", "IUD", "OC Pills")) 
-rwanda_preds <- prop_summary %>% filter(Country=="Rwanda" & Method %in% c("Implants", "Injectables", "IUD", "OC Pills")  & average_year < 2027)
+rwanda_obs <- P_df %>% dplyr::filter(Country=="Rwanda" & Method %in% c("Implants", "Injectables", "IUD", "OC Pills")) 
+rwanda_preds <- prop_summary %>% dplyr::filter(Country=="Rwanda" & Method %in% c("Implants", "Injectables", "IUD", "OC Pills")  & average_year < 2027)
 
-ggplot() +
-  geom_point(data = rwanda_obs, aes(x=average_year, y=Observed, colour=Sector, pch=Sector)) +
-  geom_errorbar(data = rwanda_obs, aes(x=average_year, ymin=lower_95, ymax=upper_95, colour=Sector)) +
-  geom_line(data = rwanda_preds, aes(x=average_year, y=Mean, colour=Sector, lty=Sector)) +
-  geom_ribbon(data = rwanda_preds, aes(x=average_year, ymin=lower_95, ymax = upper_95, fill=Sector), alpha=0.2) +
-  theme_minimal() +
-  theme(title = element_text(size=20), axis.text.x = element_text(angle = 90), strip.text.x = element_text(size=20), strip.text.y = element_text(size=20), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +
-  theme(legend.position = "bottom", legend.title = element_text(size = 20), legend.text = element_text(size = 20))+
-  facet_grid(Region ~ Method)
+ggplot2::ggplot() +
+  ggplot2::geom_point(data = rwanda_obs,
+                      aes(x=average_year, y=Observed, colour=Sector, pch=Sector)) +
+  ggplot2::geom_errorbar(data = rwanda_obs,
+                         aes(x=average_year, ymin=lower_95, ymax=upper_95, colour=Sector)) +
+  ggplot2::geom_line(data = rwanda_preds, aes(x=average_year, y=Mean, colour=Sector, lty=Sector)) +
+  ggplot2::geom_ribbon(data = rwanda_preds,
+                       aes(x=average_year, ymin=lower_95, ymax = upper_95, fill=Sector), alpha=0.2) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(title = element_text(size=20),
+                 axis.text.x = element_text(angle = 90),
+                 strip.text.x = element_text(size=20),
+                 strip.text.y = element_text(size=20),
+                 axis.title.x = element_text(size=20),
+                 axis.title.y = element_text(size=20),
+                 legend.position = "bottom",
+                 legend.title = element_text(size = 20), 
+                 legend.text = element_text(size = 20))+
+  ggplot2::facet_grid(Region ~ Method)
 
 
 ```

@@ -10,9 +10,12 @@
 #'
 #' This returns a list containing cleaned data, metadata and spline objects.
 #' @importFrom magrittr %>%
-#' @param raw_df Raw FP source data frame (unindexed) (e.g. mcmsector::subnat_bivar_data) .
-#' @param area_classification A country/area classification table (e.g. mcmsector::Country_and_area_classification_inclFP2020).
-#' @param deft_lookup Optional DEFT lookup (passed through to SE cleaning if used earlier).
+#' @param raw_df Raw FP source data frame (unindexed) 
+#' (e.g. mcmsector::subnat_bivar_data) .
+#' @param area_classification A country/area classification table 
+#' (e.g. mcmsector::Country_and_area_classification_inclFP2020).
+#' @param deft_lookup Optional DEFT lookup 
+#' (passed through to SE cleaning if used earlier).
 #' @param methods Character vector of methods.
 #' @param all_years Numeric vector of years to index across.
 #' @param nseg Number of spline segments.

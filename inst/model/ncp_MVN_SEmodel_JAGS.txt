@@ -56,9 +56,12 @@ model{
   tau_delta <- sigma_delta^-2
   
   # Intercepts
+  for(m in 1:M_count){ # method loop
+    mu_alpha_cms[m] ~ dnorm(0, pow(10, -2))
+  }
   for(c in 1:C_count) { # country loop
     err_alpha_cms[1:M_count,c] ~ dmnorm(rep(0,M_count), inv.Sigma.alpha_cms[1:M_count,1:M_count])
-    alpha_cms[1:M_count,c] <- rep(0,M_count) + err_alpha_cms[1:M_count,c]
+    alpha_cms[1:M_count,c] <- mu_alpha_cms + err_alpha_cms[1:M_count,c]
   }
   for(p in 1:P_count) { # province loop
     err_alpha_pms[1:M_count,p] ~ dmnorm(rep(0,M_count), inv.Sigma.alpha_pms[1:M_count,1:M_count])

@@ -14,11 +14,14 @@ run_preprocessing_pipeline(
 )
 }
 \arguments{
-\item{raw_df}{Raw FP source data frame (unindexed) (e.g. mcmsector::subnat_bivar_data) .}
+\item{raw_df}{Raw FP source data frame (unindexed)
+(e.g. mcmsector::subnat_bivar_data) .}
 
-\item{area_classification}{A country/area classification table (e.g. mcmsector::Country_and_area_classification_inclFP2020).}
+\item{area_classification}{A country/area classification table
+(e.g. mcmsector::Country_and_area_classification_inclFP2020).}
 
-\item{deft_lookup}{Optional DEFT lookup (passed through to SE cleaning if used earlier).}
+\item{deft_lookup}{Optional DEFT lookup
+(passed through to SE cleaning if used earlier).}
 
 \item{methods}{Character vector of methods.}
 

@@ -1,7 +1,7 @@
 Package: mcmsector
 Type: Package
 Title: Estimating Public and Private Contraceptive Supply Shares Over Time
-Version: 1.0.0
+Version: 1.0.1
 Author: Hannah Comiskey [aut, cre], David Fraizer [aut], Ole Maneesoonthorn [aut]
 Maintainer: Hannah Comiskey <hannahcomiskey68@gmail.com>
 Authors@R: c(person(given = "Hannah",
@@ -31,6 +31,7 @@ Depends:
 LazyData: true
 Suggests: 
     knitr,
+    R2jags,
     rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
