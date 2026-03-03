@@ -1,6 +1,6 @@
 Package: mcmsector
 Type: Package
-Title: Estimating Public and Private Contraceptive Supply Shares Over Time
+Title: Estimating Subnational Public and Private Contraceptive Supply Shares Over Time
 Version: 1.0.1
 Author: Hannah Comiskey [aut, cre], David Fraizer [aut], Ole Maneesoonthorn [aut]
 Maintainer: Hannah Comiskey <hannahcomiskey68@gmail.com>
