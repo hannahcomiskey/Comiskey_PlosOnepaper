@@ -33,10 +33,10 @@ Each section explains what the code is doing and how it contributes to the final
 
 ## Load and explore the subnational data
 
-This section loads required libraries and prints a glimpse of the raw dataset included in the package. The subnat_bivar_data dataset contains subnational contraceptive method share data for multiple countries, sectors, and time periods.
+This section loads required libraries and prints a glimpse of the raw dataset included in the package. The mcmsector::subnat_bivar_data dataset contains subnational contraceptive method share data for multiple countries, sectors, and time periods.
 
 ```{r subnational data}
-glimpse(subnat_bivar_data)
+dplyr::glimpse(mcmsector::subnat_bivar_data)
 ```
 
 ## Prepare data
@@ -53,10 +53,11 @@ These steps are performed by two convenience functions: `clean_fp_source_data()`
 
 ```{r prepare data, echo=FALSE}
 
-data <- clean_fp_source_data(subnat_bivar_data, deft_lookup = DEFT_DHS_database)
+data <- clean_fp_source_data(mcmsector::subnat_bivar_data, 
+                             deft_lookup = DEFT_DHS_database)
 
 inputs <- run_preprocessing_pipeline(raw_df = data, 
-                                     area_classification = Country_and_area_classification_inclFP2020,
+                                     area_classification = Country_classification,
                                      methods = c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills"),
                                      all_years = seq(1990, 2030.5, by = 0.5),
                                      nseg = 10)

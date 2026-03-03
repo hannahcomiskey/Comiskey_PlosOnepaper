@@ -3,7 +3,7 @@
 #' A subset of data from the United Nations country classifications
 #'
 #' @docType data
-#' @keywords Country_and_area_classification_inclFP2020
+#' @keywords Country_classification
 #' @format  A data frame with 231 rows and 8 columns:
 #' \describe{
 #'   \item{Country or area}{Country name}
@@ -16,4 +16,4 @@
 #'   \item{FP2020}{Binary indicator for FP2020 participation status}
 #' }
 #' @source https://unstats.un.org/unsd/methodology/m49/
-"Country_and_area_classification_inclFP2020"
+"Country_classification"

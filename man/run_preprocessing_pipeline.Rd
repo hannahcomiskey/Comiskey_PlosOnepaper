@@ -18,7 +18,7 @@ run_preprocessing_pipeline(
 (e.g. mcmsector::subnat_bivar_data) .}
 
 \item{area_classification}{A country/area classification table
-(e.g. mcmsector::Country_and_area_classification_inclFP2020).}
+(e.g. mcmsector::Country_classification).}
 
 \item{deft_lookup}{Optional DEFT lookup
 (passed through to SE cleaning if used earlier).}
@@ -53,6 +53,6 @@ This returns a list containing cleaned data, metadata and spline objects.
 \examples{
 \dontrun{
 out <- run_preprocessing_pipeline(raw_df = subnat_bivar_data , 
-            area_classification = Country_and_area_classification_inclFP2020)
+            area_classification = Country_classification)
 }
 }

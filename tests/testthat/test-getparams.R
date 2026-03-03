@@ -3,7 +3,7 @@ testthat::test_that("Get subnational model params example", {
   data <- clean_fp_source_data(mcmsector::subnat_bivar_data, deft_lookup = mcmsector::DEFT_DHS_database)
   
   inputs <- run_preprocessing_pipeline(raw_df = data, 
-                                       area_classification = mcmsector::Country_and_area_classification_inclFP2020,
+                                       area_classification = mcmsector::Country_classification,
                                        methods = c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills"),
                                        all_years = seq(1990, 2030.5, by = 0.5),
                                        nseg = 10)
