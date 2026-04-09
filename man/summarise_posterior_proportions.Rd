@@ -33,7 +33,35 @@ posterior means and 95\% credible intervals for each sector, method, region,
 and year.
 }
 \examples{
-\donttest{
-df <- summarise_posterior_proportions(P, method_tbl, sector_tbl, subnat_tbl, year_tbl)
-}
+# Example: Summarise posterior probabilities
+library(dplyr)
+library(tidyr)
+
+# Simulate a small 5D posterior array:
+# Dimensions: sample x sector x method x subnat x year
+n_samps  <- 10
+n_sector <- 2
+n_method <- 2
+n_subnat <- 3
+n_year   <- 4
+
+set.seed(123)
+P <- array(runif(n_samps * n_sector * n_method * n_subnat * n_year),
+           dim = c(n_samps, n_sector, n_method, n_subnat, n_year))
+
+# Create minimal index tables
+method_tbl <- tibble(index_method = 1:n_method, Method = c("MethodA", "MethodB"))
+sector_tbl <- tibble(index_sector = 1:n_sector, SectorName = c("Public", "Private"))
+subnat_tbl <- tibble(index_subnat = 1:n_subnat, Region = paste0("Region", 1:n_subnat))
+year_tbl   <- tibble(index_year = 1:n_year, Year = 2000 + 0:(n_year-1))
+
+# Summarise posterior
+df_summary <- summarise_posterior_proportions(
+  P,
+  method_index_table = method_tbl,
+  sector_index_table = sector_tbl,
+  subnat_index_table = subnat_tbl,
+  year_index_table   = year_tbl
+)
+
 }
