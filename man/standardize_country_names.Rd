@@ -16,7 +16,7 @@ standardize_country_names(
 \item{df}{A data frame with a \code{Country} column.}
 
 \item{area_classification}{A data frame with columns \verb{Country or area} and \code{Region}
-(e.g., \code{mcmsupply::Country_and_area_classification}).}
+(e.g., \code{Country_classification}).}
 
 \item{country_name_fixes}{Named character vector of replacements (optional).}
 }
@@ -28,7 +28,6 @@ Harmonises a few common country name variants and joins a country-area
 classification table to produce a \code{Super_region} column.
 }
 \examples{
-ac <- mcmsupply::Country_and_area_classification
-df2 <- standardize_country_names(FP_source_data_wide, ac)
+standardize_country_names(subnat_bivar_data, Country_classification)
 
 }

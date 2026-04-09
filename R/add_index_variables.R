@@ -15,9 +15,10 @@
 #' @examples
 #' # Clean the subnational data
 #' subnat_clean <- clean_fp_source_data(subnat_bivar_data)
+
 #' # Add the region, country, method and time indices
 #' indexed_subnat <- add_index_variables(subnat_clean)
-
+#' 
 add_index_variables <- function(df,
                                 methods = c("Female Sterilization", "Implants", "Injectables", "IUD", "OC Pills"),
                                 all_years = seq(1990, 2030.5, by = 0.5)) {

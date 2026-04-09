@@ -19,23 +19,55 @@
 #' @export
 #'
 #' @examples
-#' \donttest{
-#' mod <- readRDS("results/JAGS/JAGS_model.RDS")
-#' params <- extract_mcmsector_params(mod, n_method=5, n_subnat=159, n_beta=13)
-#' }
+#' #  Example: Extract parameters from mock JAGS output 
+#' set.seed(123)
+#'
+#' # Create a fake sims.array
+#' n_iter   <- 10
+#' n_chain  <- 2
+#' n_method <- 2
+#' n_subnat <- 3
+#' n_beta   <- 2
+#'
+#' var_names <- c(
+#'   paste0("alpha_pms[", rep(1:n_method, each = n_subnat),
+#'          ",", rep(1:n_subnat, times = n_method), "]"),
+#'   paste0("beta.k[",
+#'          rep(1:n_method, each = n_subnat * n_beta), ",",
+#'          rep(rep(1:n_subnat, each = n_beta), times = n_method), ",",
+#'          rep(1:n_beta, times = n_method * n_subnat), "]")
+#' )
+#'
+#' sims_array <- array(
+#'   rnorm(n_iter * n_chain * length(var_names)),
+#'   dim = c(n_iter, n_chain, length(var_names)),
+#'   dimnames = list(NULL, NULL, var_names)
+#' )
+#'
+#' # Mock JAGS object
+#' mod <- list(BUGSoutput = list(sims.array = sims_array))
+#'
+#' # Run function
+#' params <- extract_mcmsector_params(
+#'   mod,
+#'   n_method = n_method,
+#'   n_subnat = n_subnat,
+#'   n_beta   = n_beta
+#' )
+#' 
 extract_mcmsector_params <- function(mod, n_method, n_subnat, n_beta = 13) {
   
   sims <- mod$BUGSoutput$sims.array
   vars <- dimnames(sims)[[3]]
   
-  # alpha ----------------------------------------------------------
+  # alpha --
   alpha_start <- grep("alpha_pms\\[1,1\\]", vars)[1]
   alpha_end   <- grep(sprintf("alpha_pms\\[%s,%s\\]", n_method, n_subnat), vars)[1]
   
   alpha_raw <- sims[ , , alpha_start:alpha_end ]
   alpha_mat <- rbind(alpha_raw[, 1, ], alpha_raw[, 2, ])
   
-  # beta -----------------------------------------------------------
+  # beta ---
   beta_start <- grep("beta.k\\[1,1,1\\]", vars)[1]
   beta_end   <- grep(sprintf("beta.k\\[%s,%s,%s\\]", n_method, n_subnat, n_beta), vars)[1]
   

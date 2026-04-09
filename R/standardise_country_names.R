@@ -6,14 +6,13 @@
 #'
 #' @param df A data frame with a `Country` column.
 #' @param area_classification A data frame with columns `Country or area` and `Region`
-#'   (e.g., `mcmsupply::Country_and_area_classification`).
+#'   (e.g., `Country_classification`).
 #' @param country_name_fixes Named character vector of replacements (optional).
 #'
 #' @return The input data frame with `Super_region` added and country names fixed.
 #' @export
 #' @examples
-#' ac <- mcmsupply::Country_and_area_classification
-#' df2 <- standardize_country_names(FP_source_data_wide, ac)
+#' standardize_country_names(subnat_bivar_data, Country_classification)
 #' 
 standardize_country_names <- function(df,
                                       area_classification,

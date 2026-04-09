@@ -18,8 +18,8 @@
 #' indexed_subnat <- add_index_variables(subnat_clean)
 #' 
 #' # Build JAGS inputs
-#' meta <- build_jags_inputs(df = subnat_clean, 
-#' all_years = seq(1990, 2030.5, by = 0.5))
+#' meta <- build_jags_inputs(df = indexed_subnat,
+#'  all_years = seq(1990, 2030.5, by = 0.5))
 #' 
 
 build_jags_inputs <- function(df, all_years = seq(1990, 2030.5, by = 0.5)) {

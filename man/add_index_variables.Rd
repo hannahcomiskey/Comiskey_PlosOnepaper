@@ -31,4 +31,5 @@ country (\code{index_country}), method (\code{index_method}) and year
 subnat_clean <- clean_fp_source_data(subnat_bivar_data)
 # Add the region, country, method and time indices
 indexed_subnat <- add_index_variables(subnat_clean)
+
 }

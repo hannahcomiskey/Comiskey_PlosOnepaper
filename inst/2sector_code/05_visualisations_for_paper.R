@@ -73,7 +73,7 @@ prov_plot <- ggcorrplot::ggcorrplot(corr_prov,
                                     lab = TRUE)  + theme(legend.position = 'none')
 
 corr_plots <- ggpubr::ggarrange(country_plot, prov_plot, labels = "AUTO")
-ggsave(corr_plots, filename = paste0(vispath,'/parameter_plots/corr_plots.pdf'), height=12, width=15) 
+#ggsave(corr_plots, filename = paste0(vispath,'/parameter_plots/corr_plots.pdf'), height=12, width=15) 
 
 # Correlations with more conservative prior 
 
@@ -98,7 +98,7 @@ prov_plot <- ggcorrplot::ggcorrplot(corr_prov,
                                     lab = TRUE)  + theme(legend.position = 'none')
 
 corr_plots <- ggpubr::ggarrange(country_plot, prov_plot, labels = "AUTO")
-ggsave(corr_plots, filename = paste0(vispath,'/parameter_plots/corr_plots_conservative.pdf'), height=12, width=15) 
+#ggsave(corr_plots, filename = paste0(vispath,'/parameter_plots/corr_plots_conservative.pdf'), height=12, width=15) 
 
 
 # Subnational maps -------------------------------------------------------------
@@ -158,7 +158,7 @@ ggplot() +
   theme(title = element_text(size=20), axis.text.x = element_text(angle = 90), strip.text.x = element_text(size=20), strip.text.y = element_text(size=20), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +
   theme(legend.position = 'bottom') +
   facet_grid(Method~average_year)
-ggsave(filename = paste0(vispath,'nigeria_maps.pdf'), height=12, width=15) 
+#ggsave(filename = paste0(vispath,'nigeria_maps.pdf'), height=12, width=15) 
 
 
 rwanda_preds <- P_samps_df %>% filter(Country == "Rwanda" & average_year %in% c(1990, 2000, 2010, 2020, 2025))
@@ -177,7 +177,7 @@ ggplot() +
   theme(axis.text.x = element_text(angle = 90), strip.text.x = element_text(size=20), strip.text.y = element_text(size=16), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +
   theme(legend.position = 'bottom') +
   facet_grid(Method~average_year)
-ggsave(filename = paste0(vispath,'rwanda_maps.pdf'), height=14, width=16) 
+#ggsave(filename = paste0(vispath,'rwanda_maps.pdf'), height=14, width=16) 
 
 
 # Plot predictions ----------------------------------------------------------------
@@ -193,7 +193,7 @@ ggplot() +
   theme(title = element_text(size=20), axis.text.x = element_text(angle = 90), strip.text.x = element_text(size=20), strip.text.y = element_text(size=20), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +
   theme(legend.position = "bottom", legend.title = element_text(size = 20), legend.text = element_text(size = 20))+
   facet_grid(Region ~ Method)
-ggsave(filename = paste0("rwanda_supplyshares_plot.pdf"), path = paste0(vispath, '/figs'), height=12, width=15) 
+#ggsave(filename = paste0("rwanda_supplyshares_plot.pdf"), path = paste0(vispath, '/figs'), height=12, width=15) 
 
 nga_obs <- P_df %>% filter(Country=="Nigeria" & Method %in% c("Female Sterilization", "Injectables", "OC Pills"))
 nga_preds <- P_samps_df %>% filter(Country=="Nigeria" & Method %in% c("Female Sterilization", "Injectables", "OC Pills")  & average_year < 2027)
@@ -207,7 +207,7 @@ ggplot() +
   theme(title = element_text(size=20), axis.text.x = element_text(angle = 90), strip.text.x = element_text(size=20), strip.text.y = element_text(size=20), axis.title.x = element_text(size=20), axis.title.y = element_text(size=20)) +
   theme(legend.position = "bottom", legend.title = element_text(size = 20), legend.text = element_text(size = 20))+
   facet_grid(Region ~ Method)
-ggsave(filename = paste0("nigeria_supplyshares_plot.pdf"), path = paste0(vispath, '/figs'), height=12, width=15) 
+#ggsave(filename = paste0("nigeria_supplyshares_plot.pdf"), path = paste0(vispath, '/figs'), height=12, width=15) 
 
 # Get 2025 summary -------------------------------------------------------------
 
