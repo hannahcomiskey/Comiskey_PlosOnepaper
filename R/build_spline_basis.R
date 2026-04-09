@@ -19,9 +19,27 @@
 #' }
 #' @export
 #' @examples
-#' \dontrun{
-#' splines_out <- build_spline_basis(T_star, all_years, nseg = 10)
-#' }
+#' # Example: Build B-spline basis 
+#' library(dplyr)
+#'
+#' # Create a small T_star dataset (as returned by compute_T_star)
+#' T_star <- data.frame(
+#'   index_country = c(1, 1, 2),
+#'   index_subnat  = c(1, 2, 3),
+#'   average_year  = c(2005, 2010, 2008),
+#'   index_year    = c(2, 3, 2)
+#' )
+#'
+#' # Define years to evaluate the spline basis
+#' all_years <- seq(2000, 2015, by = 1)
+#'
+#' # Build spline basis
+#' splines_out <- build_spline_basis(
+#'   T_star    = T_star,
+#'   all_years = all_years,
+#'   nseg      = 5
+#' )
+#' 
 build_spline_basis <- function(T_star, all_years = seq(1990, 2030.5, by = 0.5), nseg = 10) {
   stopifnot(is.data.frame(T_star))
   n_subnat <- nrow(T_star)

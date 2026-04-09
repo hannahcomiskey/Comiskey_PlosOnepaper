@@ -27,7 +27,8 @@ country (\code{index_country}), method (\code{index_method}) and year
 (\code{index_year}) to facilitate modeling and JAGS data construction.
 }
 \examples{
-\dontrun{
-df_idx <- add_index_variables(FP_source_data_wide)
-}
+# Clean the subnational data
+subnat_clean <- clean_fp_source_data(subnat_bivar_data)
+# Add the region, country, method and time indices
+indexed_subnat <- add_index_variables(subnat_clean)
 }

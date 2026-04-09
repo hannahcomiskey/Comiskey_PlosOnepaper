@@ -51,8 +51,7 @@ Master wrapper that runs the full preprocessing pipeline:
 This returns a list containing cleaned data, metadata and spline objects.
 }
 \examples{
-\dontrun{
 out <- run_preprocessing_pipeline(raw_df = subnat_bivar_data , 
             area_classification = Country_classification)
-}
+
 }

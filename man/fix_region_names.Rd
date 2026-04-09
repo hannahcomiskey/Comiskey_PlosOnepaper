@@ -18,4 +18,5 @@ Nigeria, and Cote d'Ivoire to ensure consistent naming across years.
 }
 \examples{
 clean <- fix_region_names(mcmsector::subnat_bivar_data)
+
 }

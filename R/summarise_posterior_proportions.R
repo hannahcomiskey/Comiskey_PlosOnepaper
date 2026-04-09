@@ -15,7 +15,7 @@
 #' @return A tibble with posterior mean, lower 95%, and upper 95% intervals.
 #' @export
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' df <- summarise_posterior_proportions(P, method_tbl, sector_tbl, subnat_tbl, year_tbl)
 #' }
 summarise_posterior_proportions <- function( P,

@@ -11,9 +11,17 @@
 #' @return A named list of metadata items used downstream.
 #' @export
 #' @examples
-#' \dontrun{
-#' meta <- build_jags_inputs(df_idx)
-#' }
+#' # Clean the subnational data
+#' subnat_clean <- clean_fp_source_data(subnat_bivar_data)
+#' 
+#' # Add the region, country, method and time indices
+#' indexed_subnat <- add_index_variables(subnat_clean)
+#' 
+#' # Build JAGS inputs
+#' meta <- build_jags_inputs(df = subnat_clean, 
+#' all_years = seq(1990, 2030.5, by = 0.5))
+#' 
+
 build_jags_inputs <- function(df, all_years = seq(1990, 2030.5, by = 0.5)) {
   stopifnot(is.data.frame(df))
   

@@ -19,7 +19,7 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' mod <- readRDS("results/JAGS/JAGS_model.RDS")
 #' params <- extract_mcmsector_params(mod, n_method=5, n_subnat=159, n_beta=13)
 #' }

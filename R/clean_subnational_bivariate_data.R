@@ -34,9 +34,8 @@
 #' @export
 #' @importFrom magrittr %>%
 #' @examples
-#' \dontrun{
-#' cleaned <- clean_fp_source_data(subnat_raw, deft_db)
-#' }
+#' cleaned <- clean_fp_source_data(subnat_bivar_data)
+#' 
 clean_fp_source_data <- function(subnat_data,
                  deft_lookup = mcmsector::DEFT_DHS_database,
                  fp2030_countries = c(

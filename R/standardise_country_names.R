@@ -12,10 +12,9 @@
 #' @return The input data frame with `Super_region` added and country names fixed.
 #' @export
 #' @examples
-#' \dontrun{
 #' ac <- mcmsupply::Country_and_area_classification
 #' df2 <- standardize_country_names(FP_source_data_wide, ac)
-#' }
+#' 
 standardize_country_names <- function(df,
                                       area_classification,
                                       country_name_fixes = c(

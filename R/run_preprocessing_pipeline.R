@@ -29,10 +29,9 @@
 #' }
 #' @export
 #' @examples
-#' \dontrun{
 #' out <- run_preprocessing_pipeline(raw_df = subnat_bivar_data , 
 #'             area_classification = Country_classification)
-#' }
+#'
 run_preprocessing_pipeline <- function(raw_df,
                                        area_classification,
                                        deft_lookup = NULL,

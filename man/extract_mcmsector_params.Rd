@@ -29,7 +29,7 @@ extracts the posterior simulations for \code{alpha_pms} and \code{beta.k} into
 clean matrices suitable for downstream computation.
 }
 \examples{
-\dontrun{
+\donttest{
 mod <- readRDS("results/JAGS/JAGS_model.RDS")
 params <- extract_mcmsector_params(mod, n_method=5, n_subnat=159, n_beta=13)
 }

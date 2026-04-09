@@ -33,7 +33,7 @@ posterior means and 95\% credible intervals for each sector, method, region,
 and year.
 }
 \examples{
-\dontrun{
+\donttest{
 df <- summarise_posterior_proportions(P, method_tbl, sector_tbl, subnat_tbl, year_tbl)
 }
 }

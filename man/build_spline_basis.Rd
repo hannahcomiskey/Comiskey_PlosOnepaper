@@ -29,7 +29,25 @@ using \code{bs_bbase_precise()} which is a small wrapper around \code{splines::b
 The returned arrays mimic the shape used in your original script.
 }
 \examples{
-\dontrun{
-splines_out <- build_spline_basis(T_star, all_years, nseg = 10)
-}
+# Example: Build B-spline basis 
+library(dplyr)
+
+# Create a small T_star dataset (as returned by compute_T_star)
+T_star <- data.frame(
+  index_country = c(1, 1, 2),
+  index_subnat  = c(1, 2, 3),
+  average_year  = c(2005, 2010, 2008),
+  index_year    = c(2, 3, 2)
+)
+
+# Define years to evaluate the spline basis
+all_years <- seq(2000, 2015, by = 1)
+
+# Build spline basis
+splines_out <- build_spline_basis(
+  T_star    = T_star,
+  all_years = all_years,
+  nseg      = 5
+)
+
 }

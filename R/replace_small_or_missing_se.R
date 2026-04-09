@@ -11,6 +11,32 @@
 #' @return A data frame with corrected SE values.
 #'
 #' @keywords internal
+#' #' @examples
+#' # Example: Replace small or missing SEs
+#' set.seed(123)
+#'
+#' # Create example data
+#' df <- data.frame(
+#'   Public.SE  = c(0.02, NA, 0, 0.0005, 0.01),
+#'   Private.SE = c(0.03, 0.02, 0.01, 0.02, 0.03),
+#'   Public_n   = c(100, 50, 30, 10, 200),
+#'   Private_n  = c(120, 40, 25, 15, 180),
+#'   Year       = c(2000, 2001, 2002, 2003, 2004)
+#' )
+#'
+#' # Create DEFT lookup table
+#' deft_lookup <- data.frame(
+#'   Year = 2000:2004,
+#'   DEFT = c(1.2, 1.5, NA, 1.3, 1.1)
+#' )
+#'
+#' # Apply function
+#' df_corrected <- replace_small_or_missing_se(
+#'   df = df,
+#'   deft_lookup = deft_lookup,
+#'   min_n = 20
+#' )
+#' 
 replace_small_or_missing_se <- function(df, deft_lookup, min_n = 20) {
   
   df$count_SE.NA <- is.na(df$Public.SE)

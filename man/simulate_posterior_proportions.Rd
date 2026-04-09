@@ -40,3 +40,55 @@ A list containing:
 Computes posterior draws of the logit-scale proportions and the corresponding
 public/private probabilities for all methods, regions, and years.
 }
+\examples{
+set.seed(123)
+
+# Dimensions
+n_samps  <- 100
+n_method <- 2
+n_subnat <- 3
+n_years  <- 5
+n_beta   <- 4
+
+all_years <- 2000:(2000 + n_years - 1)
+
+# Simulate alpha posterior samples
+alpha_pms <- matrix(rnorm(n_samps * n_method * n_subnat),
+                    nrow = n_samps)
+
+colnames(alpha_pms) <- as.vector(
+  outer(
+    paste0("alpha_pms[", 1:n_method, ","),
+    paste0(1:n_subnat, "]"),
+    paste0
+  )
+)
+
+# Simulate beta posterior samples 
+beta_k <- matrix(rnorm(n_samps * n_method * n_subnat * n_beta),
+                 nrow = n_samps)
+
+colnames(beta_k) <- unlist(
+  lapply(1:n_method, function(m) {
+    lapply(1:n_subnat, function(p) {
+      paste0("beta.k[", m, ",", p, ",", 1:n_beta, "]")
+    })
+  })
+)
+
+# Create basis function array 
+B_ik <- array(runif(n_subnat * n_years * n_beta),
+              dim = c(n_subnat, n_years, n_beta))
+
+# Run simulation 
+P <- simulate_posterior_proportions(
+  alpha_pms = alpha_pms,
+  beta_k    = beta_k,
+  B_ik      = B_ik,
+  n_method  = n_method,
+  n_subnat  = n_subnat,
+  all_years = all_years,
+  n_samps   = n_samps
+)
+
+}

@@ -28,8 +28,7 @@ Harmonises a few common country name variants and joins a country-area
 classification table to produce a \code{Super_region} column.
 }
 \examples{
-\dontrun{
 ac <- mcmsupply::Country_and_area_classification
 df2 <- standardize_country_names(FP_source_data_wide, ac)
-}
+
 }
