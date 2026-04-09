@@ -36,6 +36,7 @@
 #'   deft_lookup = deft_lookup,
 #'   min_n = 20
 #' )
+#' @export
 #' 
 replace_small_or_missing_se <- function(df, deft_lookup, min_n = 20) {
   

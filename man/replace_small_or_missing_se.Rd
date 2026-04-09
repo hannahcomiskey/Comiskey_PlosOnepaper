@@ -46,6 +46,5 @@ df_corrected <- replace_small_or_missing_se(
   deft_lookup = deft_lookup,
   min_n = 20
 )
-
 }
 \keyword{internal}
