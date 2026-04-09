@@ -1,11 +1,17 @@
-# Version 1.0.2
+# Version 1.0.2 -------------------------------------------
 
 1. Added DOI to DESCRIPTION file
 2. Removed \dontrun{} and replaced with \donttest{}.
 3. Added examples to information files
 4. Removes ggsave and saveRDS from paper code: inst/2sector_code/05_visualisations_for_paper.R
 
-# Version 1.0.1
+── R CMD check results ─────────────────────────────────────────────────────────────────────── mcmsector 1.0.2 ────
+Duration: 1m 25.1s
+
+0 errors ✔ | 0 warnings ✔ | 0 notes ✔
+
+
+# Version 1.0.1 -------------------------------------------
 > ── R CMD check results ────────────────────────────────────────────────────────────────────────────────────── mcmsector 1.0.1 ────
 
 Duration: 47.2s

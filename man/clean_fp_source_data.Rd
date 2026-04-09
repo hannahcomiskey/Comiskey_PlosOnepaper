@@ -43,7 +43,7 @@ Steps performed:
 \item Removes regions \code{"NA"} and rows with insufficient sample size.
 \item Ensures proportions sum to 1 and replaces missing sectors with 0.
 \item Applies the lemon-squeezer transformation to avoid 0/1 boundaries.
-\item Cleans SE values:
+\item Cleans SE values
 \itemize{
 \item If one SE is 0, replaces with the mean of other sectors.
 \item If all SEs missing or extremely small, uses DEFT-adjusted SE.

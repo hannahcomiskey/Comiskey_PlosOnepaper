@@ -22,7 +22,7 @@ Description: Engaging the private sector in contraceptive method supply is
     Penalized splines are used to track supply shares over time, and spatial
     correlation structures link national and subnational estimates in data-
     sparse settings. For more details see Comiskey (2025) 
-    <https://doi.org/10.48550/arXiv.2510.25153>.
+    <doi:10.48550/arXiv.2510.25153>.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

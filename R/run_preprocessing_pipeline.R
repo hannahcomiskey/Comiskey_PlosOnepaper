@@ -22,10 +22,10 @@
 #'
 #' @return A named list with elements:
 #' \itemize{
-#'  \item data: cleaned + indexed data frame
-#'  \item meta: jags metadata list
-#'  \item T_star: final-observation table
-#'  \item splines: spline basis object
+#'  \item data A cleaned + indexed data frame
+#'  \item meta A jags metadata list
+#'  \item T_star A final-observation table
+#'  \item splines A spline basis object
 #' }
 #' @export
 #' @examples

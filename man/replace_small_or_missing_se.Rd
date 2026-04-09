@@ -21,68 +21,31 @@ Internal helper function that processes standard errors (SEs) in FP
 source data. Handles zero, missing, and extremely small SE values
 using DEFT-adjusted calculations.
 }
-\keyword{#}
-\keyword{#'}
-\keyword{)}
-\keyword{0,}
-\keyword{0.0005,}
-\keyword{0.01),}
-\keyword{0.01,}
-\keyword{0.02,}
-\keyword{0.03),}
-\keyword{1.1)}
-\keyword{1.3,}
-\keyword{1.5,}
-\keyword{10,}
-\keyword{15,}
-\keyword{180),}
-\keyword{20}
-\keyword{200),}
-\keyword{2000:2004,}
-\keyword{2001,}
-\keyword{2002,}
-\keyword{2003,}
-\keyword{2004)}
-\keyword{25,}
-\keyword{30,}
-\keyword{40,}
-\keyword{50,}
-\keyword{<-}
-\keyword{=}
-\keyword{@examples}
-\keyword{Apply}
-\keyword{Create}
-\keyword{DEFT}
-\keyword{Example:}
-\keyword{NA,}
-\keyword{Private.SE}
-\keyword{Private_n}
-\keyword{Public.SE}
-\keyword{Public_n}
-\keyword{Replace}
-\keyword{SEs}
-\keyword{Year}
-\keyword{c(0.02,}
-\keyword{c(0.03,}
-\keyword{c(1.2,}
-\keyword{c(100,}
-\keyword{c(120,}
-\keyword{c(2000,}
-\keyword{data}
-\keyword{data.frame(}
-\keyword{deft_lookup}
-\keyword{deft_lookup,}
-\keyword{df}
-\keyword{df,}
-\keyword{df_corrected}
-\keyword{example}
-\keyword{function}
+\examples{
+# Example: Replace small or missing SEs
+set.seed(123)
+
+# Create example data
+df <- data.frame(
+  Public.SE  = c(0.02, NA, 0, 0.0005, 0.01),
+  Private.SE = c(0.03, 0.02, 0.01, 0.02, 0.03),
+  Public_n   = c(100, 50, 30, 10, 200),
+  Private_n  = c(120, 40, 25, 15, 180),
+  Year       = c(2000, 2001, 2002, 2003, 2004)
+)
+
+# Create DEFT lookup table
+deft_lookup <- data.frame(
+  Year = 2000:2004,
+  DEFT = c(1.2, 1.5, NA, 1.3, 1.1)
+)
+
+# Apply function
+df_corrected <- replace_small_or_missing_se(
+  df = df,
+  deft_lookup = deft_lookup,
+  min_n = 20
+)
+
+}
 \keyword{internal}
-\keyword{lookup}
-\keyword{min_n}
-\keyword{missing}
-\keyword{or}
-\keyword{replace_small_or_missing_se(}
-\keyword{set.seed(123)}
-\keyword{small}
-\keyword{table}

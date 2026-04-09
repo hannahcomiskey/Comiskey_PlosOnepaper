@@ -11,11 +11,11 @@
 #'
 #' @return A list with elements:
 #' \itemize{
-#'  \item B_ik: array (n_subnat x length(all_years) x K)
-#'  \item Kstar: integer vector length n_subnat (effective K for each area)
-#'  \item knots_all: matrix of knots (n_subnat x K)
-#'  \item K: number of basis columns
-#'  \item H: K - 1
+#'   \item B_ik A 3D array (n_subnat x length(all_years) x K) of spline basis values.
+#'   \item Kstar Integer vector of length n_subnat (effective K for each area).
+#'   \item knots_all Matrix of knot locations (n_subnat x K).
+#'   \item K Number of basis columns.
+#'   \item H K - 1 (used for difference penalties in smoothing).
 #' }
 #' @export
 #' @examples

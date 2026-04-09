@@ -11,7 +11,7 @@
 #' @return A data frame with corrected SE values.
 #'
 #' @keywords internal
-#' #' @examples
+#' @examples
 #' # Example: Replace small or missing SEs
 #' set.seed(123)
 #'
