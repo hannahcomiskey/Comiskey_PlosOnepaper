@@ -5,6 +5,14 @@
 3. Added examples to information files
 4. Removes ggsave and saveRDS from paper code: inst/2sector_code/05_visualisations_for_paper.R
 
+> devtools::check_win_devel()
+Status: 1 NOTE
+This flags possible spelling errors which are okay. 
+
+> devtools::check_mac_release()
+Status: OK
+
+
 ── R CMD check results ─────────────────────────────────────────────────────────────────────── mcmsector 1.0.2 ────
 Duration: 1m 25.1s
 
